@@ -44,7 +44,9 @@ describe("imagine", () => {
     const dir = tempDir();
     const file = join(dir, "large.png");
     const raw = randomBytes(1000 * 1000 * 3);
-    await sharp(raw, { raw: { width: 1000, height: 1000, channels: 3 } }).png().toFile(file);
+    await sharp(raw, { raw: { width: 1000, height: 1000, channels: 3 } })
+      .png()
+      .toFile(file);
 
     const uri = await resolveXaiImageRef(file, dir);
     const encoded = uri.slice(uri.indexOf(",") + 1);

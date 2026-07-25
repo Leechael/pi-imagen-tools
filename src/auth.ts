@@ -57,7 +57,8 @@ async function postForm(
   return {
     ok: response.ok,
     status: response.status,
-    body: parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as JsonObject) : {},
+    body:
+      parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as JsonObject) : {},
   };
 }
 

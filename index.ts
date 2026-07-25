@@ -6,11 +6,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { createXaiOAuth, extractCodexAccountId } from "./src/auth.ts";
 import { registerSettingsCommand } from "./src/command.ts";
-import {
-  isProjectTrustedContext,
-  loadConfig,
-  type ResolvedImagenConfig,
-} from "./src/config.ts";
+import { isProjectTrustedContext, loadConfig, type ResolvedImagenConfig } from "./src/config.ts";
 import { editCodexImages, generateCodexImages } from "./src/codex.ts";
 import {
   CODEX_DEFAULT_ALIAS,
@@ -28,11 +24,7 @@ import {
   recentConversationImageRefs,
   resolveRequestedImageRefs,
 } from "./src/imagine.ts";
-import {
-  formatSavedVideo,
-  imageToVideo,
-  referenceToVideo,
-} from "./src/video.ts";
+import { formatSavedVideo, imageToVideo, referenceToVideo } from "./src/video.ts";
 
 function parseProvider(value: unknown, fallback: ImageProviderId): ImageProviderId {
   if (value === undefined || value === null || value === "") return fallback;
@@ -249,11 +241,13 @@ export default function piImagenTools(pi: ExtensionAPI): void {
           description:
             "Complete description of the desired output, including what to change and what identity/composition/details must remain unchanged.",
         }),
-        images: Type.Optional(Type.Array(Type.String({ minLength: 1 }), {
-          minItems: 1,
-          description:
-            "Reference image(s), in semantic order: filesystem path, https URL, data:image URI, or current [Image #N] attachment. Codex max 5.",
-        })),
+        images: Type.Optional(
+          Type.Array(Type.String({ minLength: 1 }), {
+            minItems: 1,
+            description:
+              "Reference image(s), in semantic order: filesystem path, https URL, data:image URI, or current [Image #N] attachment. Codex max 5.",
+          }),
+        ),
         num_last_images_to_include: Type.Optional(
           Type.Integer({
             minimum: 1,
@@ -263,7 +257,8 @@ export default function piImagenTools(pi: ExtensionAPI): void {
           }),
         ),
         output_path: Type.String({
-          description: "Filesystem path to write the edited image. Relative paths resolve against cwd.",
+          description:
+            "Filesystem path to write the edited image. Relative paths resolve against cwd.",
         }),
         provider: Type.Optional(
           Type.String({
@@ -277,17 +272,17 @@ export default function piImagenTools(pi: ExtensionAPI): void {
         ),
         size: Type.Optional(
           Type.String({
-            description: 'Codex size. Default from settings.',
+            description: "Codex size. Default from settings.",
           }),
         ),
         quality: Type.Optional(
           Type.String({
-            description: 'Codex quality. Default from settings.',
+            description: "Codex quality. Default from settings.",
           }),
         ),
         background: Type.Optional(
           Type.String({
-            description: 'Codex background. Default from settings.',
+            description: "Codex background. Default from settings.",
           }),
         ),
         n: Type.Optional(
@@ -301,16 +296,9 @@ export default function piImagenTools(pi: ExtensionAPI): void {
       async execute(_id, params, signal, _onUpdate, ctx) {
         try {
           const defaults = await resolvedConfig(ctx.cwd, ctx);
-          const provider = inferProvider(
-            { provider: params.provider },
-            defaults,
-          );
+          const provider = inferProvider({ provider: params.provider }, defaults);
 
-          const images = resolveEditImages(
-            params.images,
-            params.num_last_images_to_include,
-            ctx,
-          );
+          const images = resolveEditImages(params.images, params.num_last_images_to_include, ctx);
 
           if (provider === "codex") {
             if (images.length > CODEX_MAX_EDIT_IMAGES) {
@@ -397,9 +385,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
             description: "Optional motion/camera guidance (1–2 sentences).",
           }),
         ),
-        duration: Type.Optional(
-          Type.Number({ description: "6 or 10 seconds. Default 6." }),
-        ),
+        duration: Type.Optional(Type.Number({ description: "6 or 10 seconds. Default 6." })),
         resolution_name: Type.Optional(
           Type.Union([Type.Literal("480p"), Type.Literal("720p")], {
             description: '"480p" (default) or "720p".',
@@ -462,9 +448,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
           ],
           { description: "Required output aspect ratio." },
         ),
-        duration: Type.Optional(
-          Type.Number({ description: "6 or 10 seconds. Default 6." }),
-        ),
+        duration: Type.Optional(Type.Number({ description: "6 or 10 seconds. Default 6." })),
         resolution_name: Type.Optional(
           Type.Union([Type.Literal("480p"), Type.Literal("720p")], {
             description: '"480p" (default) or "720p".',

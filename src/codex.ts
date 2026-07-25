@@ -102,7 +102,10 @@ export function resolveCodexBackground(value?: string): CodexBackground {
  * Map size/aspect to Codex Images size.
  * Official default is `auto` when neither size nor aspect is given.
  */
-export function mapCodexSize(size?: string, aspectRatio?: string): { size: string; warnings: string[] } {
+export function mapCodexSize(
+  size?: string,
+  aspectRatio?: string,
+): { size: string; warnings: string[] } {
   const warnings: string[] = [];
   const landscape = new Set(["16:9", "4:3", "3:2", "21:9", "2:1", "20:9", "19.5:9"]);
   const portrait = new Set(["9:16", "3:4", "2:3", "1:4", "1:8", "1:2"]);
@@ -258,12 +261,7 @@ function prepareCommon(params: GenerateCodexParams): {
   return { prompt, n, alias, apiModel, quality, size, background, warnings };
 }
 
-function saveAll(
-  b64s: string[],
-  outputPath: string,
-  n: number,
-  cwd: string,
-): string[] {
+function saveAll(b64s: string[], outputPath: string, n: number, cwd: string): string[] {
   const outputPaths = expandOutputPaths(outputPath, n, cwd, ".png", true);
   return b64s.map((b64, i) => saveB64ToPath(b64, outputPaths[i]!));
 }

@@ -64,33 +64,41 @@ describe("auth helpers", () => {
     } as never);
 
     assert.equal(providers[0]?.name, "xai");
-    assert.equal(typeof (providers[0]?.config.oauth as { refreshToken?: unknown })?.refreshToken, "function");
+    assert.equal(
+      typeof (providers[0]?.config.oauth as { refreshToken?: unknown })?.refreshToken,
+      "function",
+    );
 
     const providersRead: string[] = [];
     const dir = mkdtempSync(join(tmpdir(), "pi-imagen-auth-"));
     const output = join(dir, "result.jpg");
     const previousFetch = globalThis.fetch;
     globalThis.fetch = async () =>
-      new Response(JSON.stringify({ data: [{ b64_json: Buffer.from("image").toString("base64") }] }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    try {
-      await tools.get("image_gen")!.execute(
-        "call-1",
-        { prompt: "test", provider: "xai", output_path: output },
-        undefined,
-        undefined,
+      new Response(
+        JSON.stringify({ data: [{ b64_json: Buffer.from("image").toString("base64") }] }),
         {
-          cwd: dir,
-          modelRegistry: {
-            async getApiKeyForProvider(provider: string) {
-              providersRead.push(provider);
-              return "xai-access";
-            },
-          },
+          status: 200,
+          headers: { "Content-Type": "application/json" },
         },
       );
+    try {
+      await tools
+        .get("image_gen")!
+        .execute(
+          "call-1",
+          { prompt: "test", provider: "xai", output_path: output },
+          undefined,
+          undefined,
+          {
+            cwd: dir,
+            modelRegistry: {
+              async getApiKeyForProvider(provider: string) {
+                providersRead.push(provider);
+                return "xai-access";
+              },
+            },
+          },
+        );
     } finally {
       globalThis.fetch = previousFetch;
     }

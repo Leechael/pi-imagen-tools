@@ -120,9 +120,10 @@ function imageRefsFromMessage(message: unknown, cwd: string): string[] {
   if (msg.role !== "toolResult" || !IMAGE_TOOL_NAMES.has(String(msg.toolName))) return inline;
 
   const paths: string[] = [];
-  const details = msg.details && typeof msg.details === "object"
-    ? (msg.details as { paths?: unknown; path?: unknown })
-    : undefined;
+  const details =
+    msg.details && typeof msg.details === "object"
+      ? (msg.details as { paths?: unknown; path?: unknown })
+      : undefined;
   if (Array.isArray(details?.paths)) {
     paths.push(...details.paths.filter((v): v is string => typeof v === "string"));
   } else if (typeof details?.path === "string") {
@@ -130,7 +131,8 @@ function imageRefsFromMessage(message: unknown, cwd: string): string[] {
   }
   if (paths.length === 0) {
     for (const part of content) {
-      if (!part || typeof part !== "object" || (part as { type?: unknown }).type !== "text") continue;
+      if (!part || typeof part !== "object" || (part as { type?: unknown }).type !== "text")
+        continue;
       const text = (part as { text?: unknown }).text;
       if (typeof text !== "string") continue;
       for (const line of text.split("\n")) {
@@ -142,12 +144,16 @@ function imageRefsFromMessage(message: unknown, cwd: string): string[] {
     }
   }
   return [...inline, ...paths]
-    .map((value) => (/^data:image\//i.test(value) || /^https?:\/\//i.test(value)
-      ? value
-      : isAbsolute(value)
+    .map((value) =>
+      /^data:image\//i.test(value) || /^https?:\/\//i.test(value)
         ? value
-        : resolve(cwd, value)))
-    .filter((value) => /^data:image\//i.test(value) || /^https?:\/\//i.test(value) || existsSync(value));
+        : isAbsolute(value)
+          ? value
+          : resolve(cwd, value),
+    )
+    .filter(
+      (value) => /^data:image\//i.test(value) || /^https?:\/\//i.test(value) || existsSync(value),
+    );
 }
 
 function branchMessages(entries: unknown[]): unknown[] {
@@ -155,7 +161,8 @@ function branchMessages(entries: unknown[]): unknown[] {
     .map((entry) =>
       entry && typeof entry === "object" && (entry as { type?: unknown }).type === "message"
         ? (entry as { message?: unknown }).message
-        : undefined)
+        : undefined,
+    )
     .filter((message) => !!message);
 }
 
@@ -174,7 +181,9 @@ export function recentConversationImageRefs(
       if (found.length === count) return found.reverse();
     }
   }
-  throw new Error(`requested the last ${count} conversation images, but only ${found.length} were available`);
+  throw new Error(
+    `requested the last ${count} conversation images, but only ${found.length} were available`,
+  );
 }
 
 export function resolveRequestedImageRefs(
@@ -184,17 +193,22 @@ export function resolveRequestedImageRefs(
 ): string[] {
   const latestUserImages = branchMessages(entries)
     .reverse()
-    .find((message) =>
-      !!message &&
-      typeof message === "object" &&
-      (message as { role?: unknown }).role === "user" &&
-      imageRefsFromMessage(message, cwd).length > 0);
+    .find(
+      (message) =>
+        !!message &&
+        typeof message === "object" &&
+        (message as { role?: unknown }).role === "user" &&
+        imageRefsFromMessage(message, cwd).length > 0,
+    );
   const attached = latestUserImages ? imageRefsFromMessage(latestUserImages, cwd) : [];
   return images.map((value) => {
     const match = value.trim().match(ATTACHMENT_TOKEN_RE);
     if (!match) return value;
     const ref = attached[Number(match[1]) - 1];
-    if (!ref) throw new Error(`image reference ${JSON.stringify(value)} matches no image attached to the latest user message`);
+    if (!ref)
+      throw new Error(
+        `image reference ${JSON.stringify(value)} matches no image attached to the latest user message`,
+      );
     return ref;
   });
 }
@@ -280,18 +294,19 @@ export async function resolveXaiImageRef(value: string, cwd = process.cwd()): Pr
   const raw = decodeImageDataUri(resolved);
   const sourceMime = detectImageMime(raw);
   if (!sourceMime) throw new Error("could not detect image format for reference");
-  if (raw.length <= XAI_MAX_REFERENCE_BYTES && (sourceMime === "image/jpeg" || sourceMime === "image/png")) {
+  if (
+    raw.length <= XAI_MAX_REFERENCE_BYTES &&
+    (sourceMime === "image/jpeg" || sourceMime === "image/png")
+  ) {
     return `data:${sourceMime};base64,${raw.toString("base64")}`;
   }
 
-  const base = sharp(raw, { limitInputPixels: XAI_MAX_REFERENCE_PIXELS })
-    .rotate()
-    .resize({
-      width: XAI_MAX_REFERENCE_DIMENSION,
-      height: XAI_MAX_REFERENCE_DIMENSION,
-      fit: "inside",
-      withoutEnlargement: true,
-    });
+  const base = sharp(raw, { limitInputPixels: XAI_MAX_REFERENCE_PIXELS }).rotate().resize({
+    width: XAI_MAX_REFERENCE_DIMENSION,
+    height: XAI_MAX_REFERENCE_DIMENSION,
+    fit: "inside",
+    withoutEnlargement: true,
+  });
   for (const quality of XAI_REFERENCE_QUALITY_STEPS) {
     const encoded = await base.clone().jpeg({ quality, mozjpeg: true }).toBuffer();
     if (encoded.length <= XAI_MAX_REFERENCE_BYTES) {
@@ -303,7 +318,9 @@ export async function resolveXaiImageRef(value: string, cwd = process.cwd()): Pr
 
 function extractB64List(json: ImagineResponse, expected: number): string[] {
   const items = json.data ?? [];
-  const b64s = items.map((item) => item.b64_json).filter((v): v is string => typeof v === "string" && v.length > 0);
+  const b64s = items
+    .map((item) => item.b64_json)
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
   if (b64s.length === 0) {
     throw new Error("Imagine API returned no b64_json data");
   }
@@ -380,7 +397,11 @@ export async function editImages(
   return { paths, model, n };
 }
 
-export function formatSavedPaths(kind: "generated" | "edited", paths: string[], model: string): string {
+export function formatSavedPaths(
+  kind: "generated" | "edited",
+  paths: string[],
+  model: string,
+): string {
   const label = kind === "generated" ? "Saved image" : "Saved edited image";
   if (paths.length === 1) {
     return `${label}: ${paths[0]}\nmodel: ${model}`;

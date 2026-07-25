@@ -2,11 +2,7 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { ImageProviderId } from "./constants.ts";
-import {
-  CODEX_DEFAULT_ALIAS,
-  CODEX_IMAGE_MODEL,
-  XAI_IMAGINE_MODEL,
-} from "./constants.ts";
+import { CODEX_DEFAULT_ALIAS, CODEX_IMAGE_MODEL, XAI_IMAGINE_MODEL } from "./constants.ts";
 
 export type ConfigScope = "project" | "home";
 
@@ -71,7 +67,10 @@ export function isProjectTrustedContext(ctx: unknown): boolean {
   }
 }
 
-export async function loadConfig(cwd: string, isProjectTrusted = true): Promise<ResolvedImagenConfig> {
+export async function loadConfig(
+  cwd: string,
+  isProjectTrusted = true,
+): Promise<ResolvedImagenConfig> {
   const homeConfig = await readConfigFile(getConfigPath("home", cwd));
   const projectConfig = isProjectTrusted
     ? await readConfigFile(getConfigPath("project", cwd))

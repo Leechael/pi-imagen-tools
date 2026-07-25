@@ -1,5 +1,7 @@
-# Dependencies
 node_modules/
+*.tgz
+.DS_Store
+Thumbs.db
 
 # Build / cache
 dist/
@@ -20,10 +22,6 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
-
-# OS
-.DS_Store
-Thumbs.db
 
 # Editor
 .idea/

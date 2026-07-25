@@ -50,8 +50,12 @@ describe("codex helpers", () => {
     const requestedOut = join(dir, "out.jpg");
     const out = join(dir, "out.png");
     const b64 = Buffer.from("fake-png").toString("base64");
-    let captured: { url?: string; auth?: string; account?: string; body?: Record<string, unknown> } =
-      {};
+    let captured: {
+      url?: string;
+      auth?: string;
+      account?: string;
+      body?: Record<string, unknown>;
+    } = {};
 
     const fetchImpl: typeof fetch = async (input, init) => {
       captured = {

@@ -1,11 +1,6 @@
 import { relative } from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
-import {
-  type Component,
-  Input,
-  type SettingItem,
-  SettingsList,
-} from "@earendil-works/pi-tui";
+import { type Component, Input, type SettingItem, SettingsList } from "@earendil-works/pi-tui";
 import {
   type ConfigScope,
   DEFAULT_CODEX_BACKGROUND,

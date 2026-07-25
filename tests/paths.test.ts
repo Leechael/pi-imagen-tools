@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { clampN, ensureImageExtension, expandOutputPaths, resolveOutputPath } from "../src/paths.ts";
+import {
+  clampN,
+  ensureImageExtension,
+  expandOutputPaths,
+  resolveOutputPath,
+} from "../src/paths.ts";
 
 describe("paths", () => {
   it("adds or normalizes the extension to the actual output format", () => {

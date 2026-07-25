@@ -225,13 +225,7 @@ export async function imageToVideo(
     signal: opts?.signal,
     pollIntervalMs: opts?.pollIntervalMs,
   });
-  await downloadToPath(
-    done.url,
-    outputPath,
-    fetchImpl,
-    opts?.signal,
-    opts?.downloadTimeoutMs,
-  );
+  await downloadToPath(done.url, outputPath, fetchImpl, opts?.signal, opts?.downloadTimeoutMs);
   return {
     path: outputPath,
     requestId: done.requestId,
@@ -289,13 +283,7 @@ export async function referenceToVideo(
     signal: opts?.signal,
     pollIntervalMs: opts?.pollIntervalMs,
   });
-  await downloadToPath(
-    done.url,
-    outputPath,
-    fetchImpl,
-    opts?.signal,
-    opts?.downloadTimeoutMs,
-  );
+  await downloadToPath(done.url, outputPath, fetchImpl, opts?.signal, opts?.downloadTimeoutMs);
   return {
     path: outputPath,
     requestId: done.requestId,

@@ -1,0 +1,68 @@
+{
+  "name": "pi-imagen-tools",
+  "version": "0.1.0",
+  "description": "Pi extension: xAI/Codex image generation and editing plus xAI video tools",
+  "keywords": [
+    "codex",
+    "gpt-image",
+    "image-edit",
+    "image-gen",
+    "imagine",
+    "pi",
+    "pi-coding-agent",
+    "pi-extension",
+    "pi-package",
+    "video-gen",
+    "xai"
+  ],
+  "license": "MIT",
+  "author": "Leechael",
+  "files": [
+    "index.ts",
+    "src",
+    "package.json",
+    "README.md"
+  ],
+  "type": "module",
+  "main": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "clean": "echo 'nothing to clean'",
+    "build": "echo 'nothing to build'",
+    "check": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "lint": "oxlint .",
+    "format": "oxfmt . --write",
+    "format:check": "oxfmt . --check",
+    "pre-commit": "prek run"
+  },
+  "dependencies": {
+    "sharp": "^0.35.3",
+    "typebox": "^1.1.38"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "^0.82.0",
+    "@earendil-works/pi-coding-agent": "^0.82.0",
+    "@earendil-works/pi-tui": "^0.82.0",
+    "@j178/prek": "^0.4.4",
+    "@types/node": "^24.0.0",
+    "oxfmt": "^0.44.0",
+    "oxlint": "^1.59.0",
+    "typescript": "^5.9.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

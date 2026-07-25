@@ -9,7 +9,8 @@ export function ensureImageExtension(
   forceExtension = false,
 ): string {
   const ext = extname(path).toLowerCase();
-  const supported = ext === ".jpg" || ext === ".jpeg" || ext === ".png" || ext === ".webp" || ext === ".gif";
+  const supported =
+    ext === ".jpg" || ext === ".jpeg" || ext === ".png" || ext === ".webp" || ext === ".gif";
   if (!supported) return `${path}${defaultExt}`;
   if (!forceExtension) return path;
   const jpegMatch = (ext === ".jpg" || ext === ".jpeg") && defaultExt === ".jpg";
