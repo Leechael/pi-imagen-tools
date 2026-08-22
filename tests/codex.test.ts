@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, it } from "node:test";
 import {
+  describeCodexHttpError,
   editCodexImages,
   generateCodexImages,
   mapCodexSize,
@@ -136,6 +137,38 @@ describe("codex helpers", () => {
           },
         ),
       /at most 5/,
+    );
+  });
+
+  it("describeCodexHttpError surfaces usage-limit details", () => {
+    const body = JSON.stringify({
+      error: { type: "usage_limit_reached", resets_at: 1778832973 },
+    });
+    const headers = new Headers({ "x-codex-active-limit": "image_gen" });
+    const message = describeCodexHttpError(429, body, headers);
+    assert.match(message, /usage limit reached/);
+    assert.match(message, /limit: image_gen/);
+    assert.match(message, /resets at 2026-05-15T/);
+    assert.match(message, /Do not retry/);
+  });
+
+  it("describeCodexHttpError handles usage_not_included and error.message", () => {
+    const noHeaders = new Headers();
+    assert.match(
+      describeCodexHttpError(
+        429,
+        JSON.stringify({ error: { type: "usage_not_included" } }),
+        noHeaders,
+      ),
+      /not included in the current plan/,
+    );
+    assert.equal(
+      describeCodexHttpError(400, JSON.stringify({ error: { message: "bad prompt" } }), noHeaders),
+      "Codex Images API HTTP 400: bad prompt",
+    );
+    assert.equal(
+      describeCodexHttpError(500, "<html>oops</html>", noHeaders),
+      "Codex Images API HTTP 500: <html>oops</html>",
     );
   });
 });

@@ -166,6 +166,43 @@ function codexHeaders(credential: CodexCredential): Record<string, string> {
   };
 }
 
+const CODEX_ACTIVE_LIMIT_HEADER = "x-codex-active-limit";
+
+/**
+ * Mirror codex-rs map_api_error: surface usage-limit failures (429 with
+ * `error.type == "usage_limit_reached"`) with the active limit id and reset
+ * time instead of a raw truncated body.
+ */
+export function describeCodexHttpError(status: number, body: string, headers: Headers): string {
+  const fallback = `Codex Images API HTTP ${status}: ${body.slice(0, 400)}`;
+  let parsed: {
+    error?: { type?: unknown; message?: unknown; resets_at?: unknown };
+  };
+  try {
+    parsed = JSON.parse(body) as typeof parsed;
+  } catch {
+    return fallback;
+  }
+  const error = parsed?.error;
+  const errorType = typeof error?.type === "string" ? error.type : undefined;
+  if (status === 429 && errorType === "usage_limit_reached") {
+    const limit = headers.get(CODEX_ACTIVE_LIMIT_HEADER)?.trim();
+    const limitText = limit ? ` (limit: ${limit})` : "";
+    const resetsAt = typeof error?.resets_at === "number" ? error.resets_at : undefined;
+    const resetText = resetsAt
+      ? `; limit resets at ${new Date(resetsAt * 1000).toISOString()}`
+      : "";
+    return `Codex Images API usage limit reached${limitText}${resetText}. Do not retry until the limit resets.`;
+  }
+  if (status === 429 && errorType === "usage_not_included") {
+    return "Codex Images API: image generation is not included in the current plan (usage_not_included).";
+  }
+  const message =
+    typeof error?.message === "string" && error.message.trim() ? error.message : undefined;
+  if (message) return `Codex Images API HTTP ${status}: ${message}`;
+  return fallback;
+}
+
 export async function postCodexImages(
   credential: CodexCredential,
   path: "/images/generations" | "/images/edits",
