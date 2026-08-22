@@ -128,16 +128,17 @@ Generate image(s) from a text prompt.
 
 Edit from reference images. Provide either `images` or `num_last_images_to_include`, not both empty.
 
-| Param                             | Required    | Notes                                                            |
-| --------------------------------- | ----------- | ---------------------------------------------------------------- |
-| `prompt`                          | yes         | complete desired output, including what must be preserved        |
-| `images`                          | conditional | paths / https / data URI / current `[Image #N]`; **Codex max 5** |
-| `num_last_images_to_include`      | conditional | newest 1–5 conversation images                                   |
-| `output_path`                     | yes         | same rules as gen                                                |
-| `provider`                        | no          | `xai` (default) or `codex`                                       |
-| `aspect_ratio`                    | no          | xAI multi-ref; Codex size mapping                                |
-| `size` / `quality` / `background` | no          | Codex only                                                       |
-| `n`                               | no          | default 1, max 10                                                |
+| Param                             | Required    | Notes                                                                    |
+| --------------------------------- | ----------- | ------------------------------------------------------------------------ |
+| `prompt`                          | yes         | complete desired output, including what must be preserved                |
+| `images`                          | conditional | paths / https / data URI / current `[Image #N]`; **Codex max 5**         |
+| `num_last_images_to_include`      | conditional | newest 1–5 conversation images                                           |
+| `output_path`                     | yes         | same rules as gen                                                        |
+| `provider`                        | no          | `xai` (default) or `codex`                                               |
+| `aspect_ratio`                    | no          | xAI multi-ref; Codex size mapping                                        |
+| `model`                           | no          | xAI override (default `grok-imagine-image-quality`); Codex from settings |
+| `size` / `quality` / `background` | no          | Codex only                                                               |
+| `n`                               | no          | default 1, max 10                                                        |
 
 ### `image_to_video` (xAI only)
 

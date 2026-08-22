@@ -346,7 +346,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
               images,
               output_path: params.output_path,
               aspect_ratio: params.aspect_ratio,
-              model: XAI_IMAGINE_MODEL,
+              model: params.model ?? defaults.xaiModel,
               n: params.n,
             },
             { cwd: ctx.cwd, signal },
@@ -432,7 +432,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
       name: "reference_to_video",
       label: "reference_to_video",
       description:
-        "Generate a video from 2–7 reference images and/or up to 3 preset voices + prompt via xAI Imagine (grok-build reference_to_video). Requires prompt, output_path, and at least one of images/voices. Tag refs in the prompt as <IMAGE_0>, <IMAGE_1>, ... and <AUDIO_0>, <AUDIO_1>, ... Duration 1–15s; resolution 480p/720p. Uses Pi xai OAuth.",
+        "Generate a video from reference images and/or preset voices + prompt via xAI Imagine (grok-build reference_to_video). Requires prompt, output_path, and at least one of images/voices. Tag refs in the prompt as <IMAGE_0>, <IMAGE_1>, ... and <AUDIO_0>, <AUDIO_1>, ... Duration 1–15s; resolution 480p/720p. Uses Pi xai OAuth.",
       parameters: Type.Object({
         prompt: Type.String({
           description:
@@ -484,6 +484,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
             {
               prompt: params.prompt,
               images: params.images,
+              voices: params.voices,
               output_path: params.output_path,
               aspect_ratio: params.aspect_ratio,
               duration: params.duration,
