@@ -101,6 +101,9 @@ export function resolveCodexBackground(value?: string): CodexBackground {
 /**
  * Map size/aspect to Codex Images size.
  * Official default is `auto` when neither size nor aspect is given.
+ * gpt-image-2 accepts any WIDTHxHEIGHT with edges <= 3840px, both edges
+ * multiples of 16, ratio <= 3:1, and 655,360–8,294,400 total pixels
+ * (codex imagegen skill references/image-api.md).
  */
 export function mapCodexSize(
   size?: string,
@@ -123,24 +126,17 @@ export function mapCodexSize(
     case "auto":
       return { size: "auto", warnings };
     case "512":
-      warnings.push("size 512 not supported, using 1024x1024");
+      warnings.push("size 512 below the 655,360-pixel minimum, using 1024x1024");
       return { size: "1024x1024", warnings };
     case "1K":
       return { size: oriented("1024x1024", "1536x1024", "1024x1536"), warnings };
     case "2K":
-      if (isLandscape) {
-        warnings.push("size 2K not supported, using 1536x1024");
-        return { size: "1536x1024", warnings };
-      }
-      if (isPortrait) {
-        warnings.push("size 2K not supported, using 1024x1536");
-        return { size: "1024x1536", warnings };
-      }
-      warnings.push("size 2K not supported, using 1024x1024");
-      return { size: "1024x1024", warnings };
+      return { size: oriented("2048x2048", "2048x1152", "1152x2048"), warnings };
     case "4K":
-      warnings.push("size 4K not supported, using max 1536x1024");
-      return { size: "1536x1024", warnings };
+      if (isLandscape) return { size: "3840x2160", warnings };
+      if (isPortrait) return { size: "2160x3840", warnings };
+      warnings.push("size 4K square exceeds the 8,294,400-pixel cap, using max square 2880x2880");
+      return { size: "2880x2880", warnings };
     case "":
       if (isLandscape || isPortrait) {
         return { size: oriented("1024x1024", "1536x1024", "1024x1536"), warnings };
@@ -148,6 +144,8 @@ export function mapCodexSize(
       // Match official imagegen tool default.
       return { size: "auto", warnings };
     default:
+      // Explicit WIDTHxHEIGHT passes through; the backend enforces the
+      // gpt-image-2 size constraints.
       return { size: normalized, warnings };
   }
 }

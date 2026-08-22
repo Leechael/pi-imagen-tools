@@ -42,7 +42,16 @@ describe("codex helpers", () => {
     assert.equal(mapCodexSize("1K", "9:16").size, "1024x1536");
     assert.equal(mapCodexSize(undefined, "16:9").size, "1536x1024");
     assert.equal(mapCodexSize("512").size, "1024x1024");
-    assert.ok(mapCodexSize("2K").warnings.length > 0);
+    assert.ok(mapCodexSize("512").warnings.length > 0);
+    assert.equal(mapCodexSize("2K").size, "2048x2048");
+    assert.equal(mapCodexSize("2K", "16:9").size, "2048x1152");
+    assert.equal(mapCodexSize("2K", "9:16").size, "1152x2048");
+    assert.equal(mapCodexSize("2K").warnings.length, 0);
+    assert.equal(mapCodexSize("4K", "16:9").size, "3840x2160");
+    assert.equal(mapCodexSize("4K", "9:16").size, "2160x3840");
+    assert.equal(mapCodexSize("4K").size, "2880x2880");
+    assert.ok(mapCodexSize("4K").warnings.length > 0);
+    assert.equal(mapCodexSize("2048x1152").size, "2048x1152");
   });
 
   it("generateCodexImages posts /images/generations", async () => {

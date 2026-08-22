@@ -134,7 +134,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
         size: Type.Optional(
           Type.String({
             description:
-              'Codex size: "auto", "1K"/"2K"/"4K", or 1024x1024 / 1536x1024 / 1024x1536. Default from settings.',
+              'Codex size: "auto", "1K"/"2K"/"4K", or explicit WIDTHxHEIGHT (edges <=3840px, multiples of 16, ratio <=3:1). Default from settings.',
           }),
         ),
         quality: Type.Optional(

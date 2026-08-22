@@ -81,7 +81,7 @@ Fields:
 | `xaiModel`        | `grok-imagine-image-quality` | default xAI model for `image_gen`               |
 | `codexModel`      | `codex-2`                    | alias only; API model stays `gpt-image-2`       |
 | `codexQuality`    | `auto`                       | `auto` / `low` / `medium` / `high`              |
-| `codexSize`       | `auto`                       | `auto` / `1K`… / explicit dims                  |
+| `codexSize`       | `auto`                       | `auto` / `1K`/`2K`/`4K` / explicit `WxH`        |
 | `codexBackground` | `auto`                       | `auto` / `opaque` / `transparent`               |
 
 Environment overrides:
@@ -112,17 +112,17 @@ Environment overrides:
 
 Generate image(s) from a text prompt.
 
-| Param          | Required | Notes                                                                       |
-| -------------- | -------- | --------------------------------------------------------------------------- |
-| `prompt`       | yes      |                                                                             |
-| `output_path`  | yes      | relative → cwd; normalized to `.jpg` (xAI) / `.png` (Codex)                 |
-| `provider`     | no       | `xai` (default) or `codex`; inferred from `codex-*` / `gpt-image-2*` models |
-| `aspect_ratio` | no       | xAI ratios; Codex maps to fixed sizes                                       |
-| `size`         | no       | Codex: `auto` / `1K`… / explicit dims                                       |
-| `quality`      | no       | Codex: `auto` / `low` / `medium` / `high`                                   |
-| `background`   | no       | Codex: `auto` / `opaque` / `transparent`                                    |
-| `model`        | no       | xAI default `grok-imagine-image-quality`; Codex aliases mainly set quality  |
-| `n`            | no       | default 1, max 10                                                           |
+| Param          | Required | Notes                                                                                 |
+| -------------- | -------- | ------------------------------------------------------------------------------------- |
+| `prompt`       | yes      |                                                                                       |
+| `output_path`  | yes      | relative → cwd; normalized to `.jpg` (xAI) / `.png` (Codex)                           |
+| `provider`     | no       | `xai` (default) or `codex`; inferred from `codex-*` / `gpt-image-2*` models           |
+| `aspect_ratio` | no       | xAI ratios; Codex maps to fixed sizes                                                 |
+| `size`         | no       | Codex: `auto` / `1K`/`2K`/`4K` / explicit `WxH` (≤3840px, 16px multiples, ratio ≤3:1) |
+| `quality`      | no       | Codex: `auto` / `low` / `medium` / `high`                                             |
+| `background`   | no       | Codex: `auto` / `opaque` / `transparent`                                              |
+| `model`        | no       | xAI default `grok-imagine-image-quality`; Codex aliases mainly set quality            |
+| `n`            | no       | default 1, max 10                                                                     |
 
 ### `image_edit`
 
