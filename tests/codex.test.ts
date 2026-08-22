@@ -140,6 +140,62 @@ describe("codex helpers", () => {
     );
   });
 
+  it("prefers response-echoed quality/size/background over request values", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pi-imagen-codex-echo-"));
+    dirs.push(dir);
+    const out = join(dir, "echo.png");
+    const b64 = Buffer.from("echo").toString("base64");
+
+    const fetchImpl: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          created: 1,
+          data: [{ b64_json: b64 }],
+          quality: "high",
+          size: "1024x1536",
+          background: "transparent",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+
+    const result = await generateCodexImages(
+      { apiKey: "tok", accountId: "acc-1" },
+      { prompt: "a cat", output_path: out, model: "codex-2" },
+      { fetchImpl, cwd: dir },
+    );
+
+    assert.equal(result.quality, "high");
+    assert.equal(result.size, "1024x1536");
+    assert.equal(result.background, "transparent");
+  });
+
+  it("falls back to request values when echo fields are missing or unknown", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pi-imagen-codex-noecho-"));
+    dirs.push(dir);
+    const out = join(dir, "noecho.png");
+    const b64 = Buffer.from("noecho").toString("base64");
+
+    const fetchImpl: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          created: 1,
+          data: [{ b64_json: b64 }],
+          quality: "ultra",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+
+    const result = await generateCodexImages(
+      { apiKey: "tok", accountId: "acc-1" },
+      { prompt: "a cat", output_path: out, model: "codex-2" },
+      { fetchImpl, cwd: dir },
+    );
+
+    assert.equal(result.quality, "medium");
+    assert.equal(result.size, "auto");
+    assert.equal(result.background, "auto");
+  });
+
   it("describeCodexHttpError surfaces usage-limit details", () => {
     const body = JSON.stringify({
       error: { type: "usage_limit_reached", resets_at: 1778832973 },

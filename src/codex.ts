@@ -227,7 +227,7 @@ export async function postCodexImages(
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`Codex Images API HTTP ${res.status}: ${text.slice(0, 400)}`);
+      throw new Error(describeCodexHttpError(res.status, text, res.headers));
     }
     return (await res.json()) as CodexApiResponse;
   } catch (error) {
@@ -256,6 +256,27 @@ function extractB64List(json: CodexApiResponse, expected: number): string[] {
     throw new Error(`Codex Images API returned ${b64s.length} image(s), expected ${expected}`);
   }
   return b64s.slice(0, expected);
+}
+
+const QUALITY_VALUES: readonly CodexQuality[] = ["low", "medium", "high", "auto"];
+const BACKGROUND_VALUES: readonly CodexBackground[] = ["transparent", "opaque", "auto"];
+
+function echoOr<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : fallback;
+}
+
+/** Prefer the response-echoed quality/size/background over request-side values. */
+function echoedMeta(
+  json: CodexApiResponse,
+  common: { quality: CodexQuality; size: string; background: CodexBackground },
+): { quality: CodexQuality; size: string; background: CodexBackground } {
+  return {
+    quality: echoOr(json.quality, QUALITY_VALUES, common.quality),
+    size: typeof json.size === "string" && json.size.trim() ? json.size : common.size,
+    background: echoOr(json.background, BACKGROUND_VALUES, common.background),
+  };
 }
 
 function buildCommonFields(params: {
@@ -323,14 +344,15 @@ export async function generateCodexImages(
   const json = await postCodexImages(credential, "/images/generations", body, opts);
   const b64s = extractB64List(json, common.n);
   const paths = saveAll(b64s, params.output_path, common.n, cwd);
+  const meta = echoedMeta(json, common);
 
   return {
     paths,
     model: params.model?.trim() || CODEX_DEFAULT_ALIAS,
     n: common.n,
-    quality: common.quality,
-    size: common.size,
-    background: common.background,
+    quality: meta.quality,
+    size: meta.size,
+    background: meta.background,
     warnings: common.warnings,
   };
 }
@@ -368,14 +390,15 @@ export async function editCodexImages(
   const json = await postCodexImages(credential, "/images/edits", body, opts);
   const b64s = extractB64List(json, common.n);
   const paths = saveAll(b64s, params.output_path, common.n, cwd);
+  const meta = echoedMeta(json, common);
 
   return {
     paths,
     model: params.model?.trim() || CODEX_DEFAULT_ALIAS,
     n: common.n,
-    quality: common.quality,
-    size: common.size,
-    background: common.background,
+    quality: meta.quality,
+    size: meta.size,
+    background: meta.background,
     warnings: common.warnings,
   };
 }
