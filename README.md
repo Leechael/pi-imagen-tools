@@ -21,7 +21,7 @@ Pi is a small harness you adapt to your own workflow. Image and video generation
 - **`image_gen`** — text-to-image via xAI or Codex.
 - **`image_edit`** — edit from local paths, HTTPS URLs, data URIs, or recent conversation images.
 - **`image_to_video`** — one source image to MP4 via xAI.
-- **`reference_to_video`** — 2–7 reference images plus a prompt to MP4 via xAI.
+- **`reference_to_video`** — up to 7 reference images and/or up to 3 preset voices plus a prompt to MP4 via xAI.
 - **xAI OAuth provider registration** — `pi.registerProvider("xai", ...)` for `/login xai`.
 - **Codex via existing Pi auth** — uses the built-in `openai-codex` provider credentials.
 - **`/imagen-settings`** — interactive TUI plus `status` / `reset` subcommands.
@@ -151,14 +151,15 @@ Edit from reference images. Provide either `images` or `num_last_images_to_inclu
 
 ### `reference_to_video` (xAI only)
 
-| Param             | Required | Notes                                   |
-| ----------------- | -------- | --------------------------------------- |
-| `prompt`          | yes      |                                         |
-| `images`          | yes      | 2–7 refs                                |
-| `output_path`     | yes      | `.mp4` default                          |
-| `aspect_ratio`    | yes      | `1:1` / `16:9` / `9:16` / `3:2` / `2:3` |
-| `duration`        | no       | `6` / `10`                              |
-| `resolution_name` | no       | `480p` / `720p`                         |
+| Param             | Required             | Notes                                                   |
+| ----------------- | -------------------- | ------------------------------------------------------- |
+| `prompt`          | yes                  | tag refs as `<IMAGE_0>`, `<AUDIO_0>`, …                 |
+| `images`          | one of images/voices | up to 7 refs                                            |
+| `voices`          | one of images/voices | up to 3 preset voices (`ara`, `eve`, `leo`, `rex`, …)   |
+| `output_path`     | yes                  | `.mp4` default                                          |
+| `aspect_ratio`    | yes                  | `1:1` / `16:9` / `9:16` / `4:3` / `3:4` / `3:2` / `2:3` |
+| `duration`        | no                   | 1–15s, default `6`                                      |
+| `resolution_name` | no                   | `480p` / `720p`                                         |
 
 ### Output path notes
 

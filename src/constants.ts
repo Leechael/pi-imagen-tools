@@ -1,10 +1,8 @@
 export const XAI_IMAGINE_MODEL = "grok-imagine-image-quality";
 export const XAI_IMAGINE_BASE_URL = "https://api.x.ai/v1";
 export const XAI_PROVIDER_ID = "xai";
-/** grok-build reference_to_video default model */
-export const XAI_VIDEO_BASE_MODEL = "grok-imagine-video";
-/** grok-build image_to_video quality model */
-export const XAI_VIDEO_QUALITY_MODEL = "grok-imagine-video-1.5-preview";
+/** grok-build default video model for image_to_video and reference_to_video */
+export const XAI_VIDEO_MODEL = "grok-imagine-video-1.5";
 
 /** Pi auth.json provider id for ChatGPT/Codex OAuth. */
 export const CODEX_PROVIDER_ID = "openai-codex";

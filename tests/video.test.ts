@@ -8,6 +8,7 @@ import {
   imageToVideo,
   referenceToVideo,
   resolveMp4OutputPath,
+  resolveR2vDuration,
   resolveVideoResolution,
 } from "../src/video.ts";
 
@@ -25,6 +26,13 @@ describe("video", () => {
     assert.equal(clampVideoDuration(undefined), 6);
     assert.equal(clampVideoDuration(10), 10);
     assert.throws(() => clampVideoDuration(8));
+    assert.equal(resolveR2vDuration(undefined), 6);
+    assert.equal(resolveR2vDuration(1), 1);
+    assert.equal(resolveR2vDuration(15), 15);
+    assert.equal(resolveR2vDuration("12"), 12);
+    assert.throws(() => resolveR2vDuration(0));
+    assert.throws(() => resolveR2vDuration(16));
+    assert.throws(() => resolveR2vDuration(6.5));
     assert.equal(resolveVideoResolution(), "480p");
     assert.equal(resolveVideoResolution("720p"), "720p");
     assert.throws(() => resolveVideoResolution("1080p"));
@@ -49,7 +57,7 @@ describe("video", () => {
       calls.push(url);
       if (url.endsWith("/videos/generations")) {
         const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
-        assert.equal(body.model, "grok-imagine-video-1.5-preview");
+        assert.equal(body.model, "grok-imagine-video-1.5");
         assert.equal(body.duration, 6);
         assert.equal(body.resolution, "480p");
         assert.ok((body.image as { url: string }).url.startsWith("data:image/jpeg"));
@@ -62,7 +70,7 @@ describe("video", () => {
         return new Response(
           JSON.stringify({
             status: "done",
-            model: "grok-imagine-video-1.5-preview",
+            model: "grok-imagine-video-1.5",
             video: { url: "https://cdn.example/v.mp4", duration: 6 },
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
@@ -127,7 +135,7 @@ describe("video", () => {
     );
   });
 
-  it("referenceToVideo sends reference_images and base model", async () => {
+  it("referenceToVideo sends reference_images and default model", async () => {
     const dir = mkdtempSync(join(tmpdir(), "pi-imagen-r2v-"));
     dirs.push(dir);
     const a = join(dir, "a.png");
@@ -182,7 +190,7 @@ describe("video", () => {
     );
 
     assert.equal(result.requestId, "r2");
-    assert.equal(genBody.model, "grok-imagine-video");
+    assert.equal(genBody.model, "grok-imagine-video-1.5");
     assert.equal(genBody.duration, 10);
     assert.equal(genBody.aspect_ratio, "16:9");
     assert.equal(Array.isArray(genBody.reference_images), true);
@@ -190,16 +198,78 @@ describe("video", () => {
     assert.equal(readFileSync(out).toString(), "vid");
   });
 
-  it("rejects fewer than 2 refs", async () => {
+  it("referenceToVideo sends voices as reference_audios, images optional", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pi-imagen-r2v-voice-"));
+    dirs.push(dir);
+    const out = join(dir, "v.mp4");
+    let genBody: Record<string, unknown> = {};
+
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/videos/generations")) {
+        genBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+        return new Response(JSON.stringify({ request_id: "rv" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.endsWith("/videos/rv")) {
+        return new Response(
+          JSON.stringify({
+            status: "done",
+            video: { url: "https://cdn.example/v.mp4", duration: 12 },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url === "https://cdn.example/v.mp4") {
+        return new Response(Buffer.from("vid"), { status: 200 });
+      }
+      throw new Error(url);
+    };
+
+    const result = await referenceToVideo(
+      "tok",
+      {
+        prompt: "the subject speaks with <AUDIO_0>",
+        voices: ["eve"],
+        output_path: out,
+        duration: 12,
+        aspect_ratio: "4:3",
+      },
+      { fetchImpl, cwd: dir, pollIntervalMs: 1 },
+    );
+
+    assert.equal(result.requestId, "rv");
+    assert.equal(result.duration, 12);
+    assert.deepEqual(genBody.reference_audios, [{ voice_id: "eve" }]);
+    assert.deepEqual(genBody.reference_images, []);
+    assert.equal(genBody.duration, 12);
+    assert.equal(genBody.aspect_ratio, "4:3");
+  });
+
+  it("rejects when neither images nor voices are provided", async () => {
     await assert.rejects(
       () =>
         referenceToVideo("t", {
           prompt: "x",
-          images: ["only-one"],
           output_path: "/tmp/x.mp4",
           aspect_ratio: "16:9",
         }),
-      /at least 2/,
+      /at least one reference/,
+    );
+  });
+
+  it("rejects more than 3 voices", async () => {
+    await assert.rejects(
+      () =>
+        referenceToVideo("t", {
+          prompt: "x",
+          voices: ["ara", "eve", "leo", "rex"],
+          output_path: "/tmp/x.mp4",
+          aspect_ratio: "16:9",
+        }),
+      /at most 3/,
     );
   });
 
@@ -210,7 +280,7 @@ describe("video", () => {
           prompt: "x",
           images: ["a", "b"],
           output_path: "/tmp/x.mp4",
-          aspect_ratio: "4:3",
+          aspect_ratio: "21:9",
         }),
       /aspect_ratio must be one of/,
     );

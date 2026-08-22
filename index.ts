@@ -270,6 +270,11 @@ export default function piImagenTools(pi: ExtensionAPI): void {
             description: "xAI: multi-ref only. Codex: maps size with size param.",
           }),
         ),
+        model: Type.Optional(
+          Type.String({
+            description: `xAI model override (default ${XAI_IMAGINE_MODEL}, e.g. grok-imagine-image-v2). Codex: from settings.`,
+          }),
+        ),
         size: Type.Optional(
           Type.String({
             description: "Codex size. Default from settings.",
@@ -427,14 +432,26 @@ export default function piImagenTools(pi: ExtensionAPI): void {
       name: "reference_to_video",
       label: "reference_to_video",
       description:
-        "Generate a video from 2–7 reference images + prompt via xAI Imagine (grok-build reference_to_video). Requires images[], prompt, output_path. Duration 6/10s; resolution 480p/720p. Uses Pi xai OAuth.",
+        "Generate a video from 2–7 reference images and/or up to 3 preset voices + prompt via xAI Imagine (grok-build reference_to_video). Requires prompt, output_path, and at least one of images/voices. Tag refs in the prompt as <IMAGE_0>, <IMAGE_1>, ... and <AUDIO_0>, <AUDIO_1>, ... Duration 1–15s; resolution 480p/720p. Uses Pi xai OAuth.",
       parameters: Type.Object({
-        prompt: Type.String({ description: "Describe the desired video." }),
-        images: Type.Array(Type.String({ minLength: 1 }), {
-          minItems: 2,
-          maxItems: 7,
-          description: "2–7 reference images (path / https / data URI).",
+        prompt: Type.String({
+          description:
+            "Describe the desired video. Reference images as <IMAGE_0>, <IMAGE_1>, ... and voices as <AUDIO_0>, <AUDIO_1>, ...",
         }),
+        images: Type.Optional(
+          Type.Array(Type.String({ minLength: 1 }), {
+            maxItems: 7,
+            description:
+              "Up to 7 reference images (path / https / data URI): people, objects, clothing, settings.",
+          }),
+        ),
+        voices: Type.Optional(
+          Type.Array(Type.String({ minLength: 1 }), {
+            maxItems: 3,
+            description:
+              'Up to 3 preset voice identifiers the subject(s) speak in (e.g. "ara", "eve", "leo", "rex"; same roster as the xAI TTS API). Usable alongside images or on their own.',
+          }),
+        ),
         output_path: Type.String({
           description: "Filesystem path for the .mp4 (relative → cwd).",
         }),
@@ -443,12 +460,16 @@ export default function piImagenTools(pi: ExtensionAPI): void {
             Type.Literal("1:1"),
             Type.Literal("16:9"),
             Type.Literal("9:16"),
+            Type.Literal("4:3"),
+            Type.Literal("3:4"),
             Type.Literal("3:2"),
             Type.Literal("2:3"),
           ],
           { description: "Required output aspect ratio." },
         ),
-        duration: Type.Optional(Type.Number({ description: "6 or 10 seconds. Default 6." })),
+        duration: Type.Optional(
+          Type.Number({ description: "Duration in seconds, 1–15. Default 6." }),
+        ),
         resolution_name: Type.Optional(
           Type.Union([Type.Literal("480p"), Type.Literal("720p")], {
             description: '"480p" (default) or "720p".',

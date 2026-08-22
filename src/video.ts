@@ -5,8 +5,7 @@ import {
   USER_AGENT,
   VIDEO_DOWNLOAD_TIMEOUT_MS,
   XAI_IMAGINE_BASE_URL,
-  XAI_VIDEO_BASE_MODEL,
-  XAI_VIDEO_QUALITY_MODEL,
+  XAI_VIDEO_MODEL,
 } from "./constants.ts";
 import { resolveImagineImageRef } from "./imagine.ts";
 
@@ -21,7 +20,8 @@ export type ImageToVideoParams = {
 
 export type ReferenceToVideoParams = {
   prompt: string;
-  images: string[];
+  images?: string[];
+  voices?: string[];
   output_path: string;
   aspect_ratio: string;
   duration?: number | string;
@@ -33,18 +33,34 @@ export type VideoResult = {
   path: string;
   requestId: string;
   model: string;
-  duration: 6 | 10;
+  duration: number;
   resolution: string;
 };
 
 const VALID_RESOLUTIONS = new Set(["480p", "720p"]);
-const VALID_ASPECT_RATIOS = new Set(["1:1", "16:9", "9:16", "3:2", "2:3"]);
+const VALID_ASPECT_RATIOS = new Set(["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"]);
 
+const MAX_R2V_REFERENCE_IMAGES = 7;
+const MAX_R2V_REFERENCE_VOICES = 3;
+const MIN_R2V_DURATION_SECS = 1;
+const MAX_R2V_DURATION_SECS = 15;
+
+/** grok-build image_to_video duration: exactly 6 or 10 seconds, default 6. */
 export function clampVideoDuration(raw: unknown): 6 | 10 {
   const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
   if (n === 10) return 10;
   if (n === 6 || raw === undefined || raw === null || raw === "") return 6;
   throw new Error(`duration must be 6 or 10 seconds, got ${String(raw)}`);
+}
+
+/** grok-build reference_to_video duration: whole seconds 1–15, default 6. */
+export function resolveR2vDuration(raw: unknown): number {
+  if (raw === undefined || raw === null || raw === "") return 6;
+  const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw.trim()) : NaN;
+  if (Number.isInteger(n) && n >= MIN_R2V_DURATION_SECS && n <= MAX_R2V_DURATION_SECS) return n;
+  throw new Error(
+    `duration must be between ${MIN_R2V_DURATION_SECS} and ${MAX_R2V_DURATION_SECS} seconds, got ${String(raw)}`,
+  );
 }
 
 export function resolveVideoResolution(raw?: string): string {
@@ -190,7 +206,7 @@ async function downloadToPath(
   }
 }
 
-/** grok-build image_to_video: single source image → video (quality model). */
+/** grok-build image_to_video: single source image → video. */
 export async function imageToVideo(
   apiKey: string,
   params: ImageToVideoParams,
@@ -208,7 +224,7 @@ export async function imageToVideo(
   const imageUrl = resolveImagineImageRef(params.image, cwd);
   const duration = clampVideoDuration(params.duration);
   const resolution = resolveVideoResolution(params.resolution);
-  const model = params.model?.trim() || XAI_VIDEO_QUALITY_MODEL;
+  const model = params.model?.trim() || XAI_VIDEO_MODEL;
   const outputPath = resolveMp4OutputPath(params.output_path, cwd);
 
   const body: Record<string, unknown> = {
@@ -230,12 +246,12 @@ export async function imageToVideo(
     path: outputPath,
     requestId: done.requestId,
     model: done.model || model,
-    duration: (done.duration === 10 ? 10 : duration) as 6 | 10,
+    duration: done.duration ?? duration,
     resolution,
   };
 }
 
-/** grok-build reference_to_video: 2–7 refs + required prompt (base model). */
+/** grok-build reference_to_video: up to 7 image refs and/or up to 3 preset voices + required prompt. */
 export async function referenceToVideo(
   apiKey: string,
   params: ReferenceToVideoParams,
@@ -253,8 +269,16 @@ export async function referenceToVideo(
   const prompt = params.prompt?.trim();
   if (!prompt) throw new Error("prompt is required");
   const refs = (params.images ?? []).map((s) => s?.trim()).filter(Boolean) as string[];
-  if (refs.length < 2) throw new Error("images must contain at least 2 reference images");
-  if (refs.length > 7) throw new Error("images must contain at most 7 reference images");
+  const voices = (params.voices ?? []).map((s) => s?.trim()).filter(Boolean) as string[];
+  if (refs.length === 0 && voices.length === 0) {
+    throw new Error("provide at least one reference: images (up to 7) and/or voices (up to 3)");
+  }
+  if (refs.length > MAX_R2V_REFERENCE_IMAGES) {
+    throw new Error(`images must contain at most ${MAX_R2V_REFERENCE_IMAGES} reference images`);
+  }
+  if (voices.length > MAX_R2V_REFERENCE_VOICES) {
+    throw new Error(`voices must contain at most ${MAX_R2V_REFERENCE_VOICES} preset voices`);
+  }
 
   const aspect = params.aspect_ratio?.trim();
   if (!aspect || !VALID_ASPECT_RATIOS.has(aspect)) {
@@ -262,9 +286,9 @@ export async function referenceToVideo(
       `aspect_ratio must be one of ${[...VALID_ASPECT_RATIOS].join(", ")}, got ${String(params.aspect_ratio)}`,
     );
   }
-  const duration = clampVideoDuration(params.duration);
+  const duration = resolveR2vDuration(params.duration);
   const resolution = resolveVideoResolution(params.resolution);
-  const model = params.model?.trim() || XAI_VIDEO_BASE_MODEL;
+  const model = params.model?.trim() || XAI_VIDEO_MODEL;
   const outputPath = resolveMp4OutputPath(params.output_path, cwd);
   const reference_images = refs.map((r) => ({ url: resolveImagineImageRef(r, cwd) }));
 
@@ -274,6 +298,7 @@ export async function referenceToVideo(
     duration,
     resolution,
     reference_images,
+    reference_audios: voices.map((voice_id) => ({ voice_id })),
     aspect_ratio: aspect,
   };
 
@@ -288,7 +313,7 @@ export async function referenceToVideo(
     path: outputPath,
     requestId: done.requestId,
     model: done.model || model,
-    duration: (done.duration === 10 ? 10 : duration) as 6 | 10,
+    duration: done.duration ?? duration,
     resolution,
   };
 }
