@@ -2,7 +2,8 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { ImageProviderId } from "./constants.ts";
-import { CODEX_DEFAULT_ALIAS, CODEX_IMAGE_MODEL, XAI_IMAGINE_MODEL } from "./constants.ts";
+import { CODEX_DEFAULT_ALIAS, XAI_IMAGINE_MODEL } from "./constants.ts";
+import { resolveCodexApiModel } from "./codex.ts";
 
 export type ConfigScope = "project" | "home";
 
@@ -14,7 +15,7 @@ export interface PiImagenConfig {
   defaultProvider?: ImageProviderId;
   /** xAI model id default for image_gen; image_edit always uses the quality model. */
   xaiModel?: string;
-  /** Codex alias (codex-2 / codex-2-low / …); API model stays gpt-image-2. */
+  /** Codex alias or model id (codex-2, codex-2.5-flare, gpt-image-2.5-sunburst, …); gpt-image-2 and newer. */
   codexModel?: string;
   codexQuality?: CodexQualitySetting;
   /** auto | 1K | 2K | 4K | 1024x1024 | … */
@@ -87,7 +88,7 @@ export async function loadConfig(
     defaultProvider: merged.defaultProvider ?? DEFAULT_PROVIDER,
     xaiModel: merged.xaiModel ?? DEFAULT_XAI_MODEL,
     codexModel: merged.codexModel ?? DEFAULT_CODEX_MODEL,
-    codexApiModel: CODEX_IMAGE_MODEL,
+    codexApiModel: resolveCodexApiModel(merged.codexModel ?? DEFAULT_CODEX_MODEL),
     codexQuality: merged.codexQuality ?? DEFAULT_CODEX_QUALITY,
     codexSize: merged.codexSize ?? DEFAULT_CODEX_SIZE,
     codexBackground: merged.codexBackground ?? DEFAULT_CODEX_BACKGROUND,

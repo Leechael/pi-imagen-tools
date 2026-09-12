@@ -2,6 +2,7 @@ import {
   CODEX_BASE_URL,
   CODEX_DEFAULT_ALIAS,
   CODEX_IMAGE_MODEL,
+  CODEX_IMAGE_MODELS,
   CODEX_MAX_EDIT_IMAGES,
   CODEX_ORIGINATOR,
   IMAGE_GEN_TIMEOUT_MS,
@@ -24,6 +25,10 @@ const ALIASES: Record<string, string> = {
   "gpt-image-2-low": "gpt-image-2-low",
   "gpt-image-2-medium": "gpt-image-2-medium",
   "gpt-image-2-high": "gpt-image-2-high",
+  // 2.5 variants are distinct API models, not quality tiers.
+  "codex-2.5": "gpt-image-2.5-flare",
+  "codex-2.5-flare": "gpt-image-2.5-flare",
+  "codex-2.5-sunburst": "gpt-image-2.5-sunburst",
 };
 
 const TIER_QUALITY: Record<string, CodexQuality> = {
@@ -73,9 +78,20 @@ export function resolveCodexAlias(input: string | undefined): string {
   return ALIASES[raw] ?? raw;
 }
 
-/** Always send official API model `gpt-image-2`; tier aliases only affect quality. */
-export function resolveCodexApiModel(_aliasOrModel?: string): string {
-  return CODEX_IMAGE_MODEL;
+/**
+ * Map an alias or model id to the official API model. The backend does not
+ * validate the model string, so unsupported ids are rejected client-side.
+ * gpt-image-2 quality-tier aliases keep the `gpt-image-2` API model.
+ */
+export function resolveCodexApiModel(aliasOrModel?: string): string {
+  const raw = (aliasOrModel ?? CODEX_DEFAULT_ALIAS).trim() || CODEX_DEFAULT_ALIAS;
+  const id = ALIASES[raw] ?? raw;
+  if (TIER_QUALITY[id]) return CODEX_IMAGE_MODEL;
+  if ((CODEX_IMAGE_MODELS as readonly string[]).includes(id)) return id;
+  throw new Error(
+    `unsupported codex image model: ${raw}. ` +
+      `Supported: ${CODEX_IMAGE_MODELS.join(", ")} (aliases: ${Object.keys(ALIASES).join(", ")})`,
+  );
 }
 
 export function resolveCodexQuality(modelId: string, qualityOverride?: string): CodexQuality {

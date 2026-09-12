@@ -60,6 +60,14 @@ describe("config", () => {
     assert.equal(resolved.codexQuality, "medium");
   });
 
+  it("derives codexApiModel from the configured codex model", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pi-imagen-cfg-"));
+    dirs.push(dir);
+    await saveConfig("project", dir, { codexModel: "codex-2.5-sunburst" });
+    const resolved = await loadConfig(dir, true);
+    assert.equal(resolved.codexApiModel, "gpt-image-2.5-sunburst");
+  });
+
   it("validate rejects bad provider", () => {
     assert.throws(() => validateConfig({ defaultProvider: "nope" as "xai" }, "t"));
   });
