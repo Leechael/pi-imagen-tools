@@ -20,6 +20,7 @@
   "files": [
     "index.ts",
     "src",
+    "web_search.js",
     "package.json",
     "README.md"
   ],

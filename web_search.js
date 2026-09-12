@@ -30,9 +30,9 @@ function loadPiAuth() {
 
 function getAccessToken() {
   const token = process.env.ACCESS_TOKEN;
-  if (token) return token;
+  if (token) return { token, storedAccountId: "" };
   const auth = loadPiAuth();
-  if (auth) return auth.access;
+  if (auth) return { token: auth.access, storedAccountId: auth.accountId || "" };
   console.error("❌ 错误：未找到 Access Token。");
   console.error(
     '     export ACCESS_TOKEN="<你的 access token>"，或确保 ~/.pi/agent/auth.json 含 openai-codex.access',
@@ -40,9 +40,21 @@ function getAccessToken() {
   process.exit(1);
 }
 
-const ACCESS_TOKEN = getAccessToken();
+// codex OAuth token 是 JWT，payload 里带 chatgpt_account_id；
+// 优先从 token 本身取，避免 env token 误配 auth.json 里别的账号 ID
+function accountIdFromToken(token) {
+  try {
+    const payload = token.split(".")[1];
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return claims.chatgpt_account_id || "";
+  } catch {
+    return "";
+  }
+}
+
+const { token: ACCESS_TOKEN, storedAccountId } = getAccessToken();
 const BASE_URL = process.env.BASE_URL || "https://chatgpt.com/backend-api/codex";
-const ACCOUNT_ID = process.env.ACCOUNT_ID || (loadPiAuth() || {}).accountId || "";
+const ACCOUNT_ID = process.env.ACCOUNT_ID || accountIdFromToken(ACCESS_TOKEN) || storedAccountId;
 const CLIENT_VERSION = process.env.CLIENT_VERSION || "1.0.0";
 const OVERRIDE_MODEL = process.env.OPENAI_MODEL || "";
 const WEB_SEARCH_MODE = process.env.WEB_SEARCH_MODE || "live"; // "live" | "cached"
@@ -51,6 +63,10 @@ const SEARCH_CONTEXT_SIZE = process.env.SEARCH_CONTEXT_SIZE || "medium"; // "low
 const args = process.argv.slice(2);
 const LIST_MODELS_ONLY = args.includes("--list-models");
 const imageProbeIdx = args.indexOf("--image-probe");
+if (imageProbeIdx >= 0 && (!args[imageProbeIdx + 1] || args[imageProbeIdx + 1].startsWith("--"))) {
+  console.error("❌ 用法: node web_search.js --image-probe <model>");
+  process.exit(1);
+}
 const IMAGE_PROBE_MODEL = imageProbeIdx >= 0 ? args[imageProbeIdx + 1] : null;
 const query = args.filter((a) => !a.startsWith("--")).join(" ") || "OpenAI 最新发布了什么产品？";
 
@@ -107,6 +123,8 @@ async function listModels() {
 }
 
 // ========== 图像生成探测（走 codex 后端 /images/generations，消耗订阅额度） ==========
+// 注意：后端不校验 model 字段——任意字符串都返回 200，body/headers 也不 echo 实际模型。
+// 因此 probe 只能证明端点可用且额度充足，不能证明指定模型真的被使用。
 async function probeImageGeneration(model) {
   const endpoint = `${BASE_URL.replace(/\/$/, "")}/images/generations`;
   const headers = {
@@ -131,6 +149,7 @@ async function probeImageGeneration(model) {
   if (!res.ok) {
     console.log(`❌ HTTP ${res.status}`);
     console.log(text.slice(0, 2000));
+    process.exitCode = 1;
     return;
   }
 
@@ -180,6 +199,9 @@ async function* parseSSE(responseBody) {
   const reader = responseBody.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  // 事件状态必须跨 read 保留：网络分片可能把 event: 和 data: 拆到两个 chunk
+  let eventType = "";
+  let eventData = "";
 
   while (true) {
     const { done, value } = await reader.read();
@@ -188,9 +210,6 @@ async function* parseSSE(responseBody) {
 
     const lines = buffer.split("\n");
     buffer = lines.pop();
-
-    let eventType = "";
-    let eventData = "";
 
     for (const line of lines) {
       if (line.startsWith("event:")) {
