@@ -68,6 +68,15 @@ describe("config", () => {
     assert.equal(resolved.codexApiModel, "gpt-image-2.5-sunburst");
   });
 
+  it("keeps loadConfig non-fatal for an unsupported codex model", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pi-imagen-cfg-"));
+    dirs.push(dir);
+    await saveConfig("project", dir, { codexModel: "gpt-image-9" });
+    const resolved = await loadConfig(dir, true);
+    assert.equal(resolved.codexApiModel, "unsupported: gpt-image-9");
+    assert.equal(resolved.defaultProvider, DEFAULT_PROVIDER);
+  });
+
   it("validate rejects bad provider", () => {
     assert.throws(() => validateConfig({ defaultProvider: "nope" as "xai" }, "t"));
   });

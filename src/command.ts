@@ -126,7 +126,7 @@ const TEXT_FIELDS: TextField[] = [
     id: "codexModel",
     label: "Codex model alias",
     description:
-      "codex-2 / codex-2.5 aliases or gpt-image-2 / 2.5 model ids; unsupported ids are rejected",
+      "codex-2 / codex-2.5 aliases or gpt-image-2 / 2.5 model ids; unsupported ids fail at tool call",
     defaultDisplay: DEFAULT_CODEX_MODEL,
     get: (c) => c.codexModel,
     apply: (c, v) => {

@@ -47,6 +47,19 @@ export const DEFAULT_CODEX_QUALITY: CodexQualitySetting = "auto";
 export const DEFAULT_CODEX_SIZE = "auto";
 export const DEFAULT_CODEX_BACKGROUND: CodexBackgroundSetting = "auto";
 
+/**
+ * Non-fatal API model resolution for status display. An unsupported
+ * codexModel must not break loadConfig for xAI-only users; the codex tool
+ * path rejects it with the full supported list at invocation.
+ */
+function tryResolveCodexApiModel(codexModel: string): string {
+  try {
+    return resolveCodexApiModel(codexModel);
+  } catch {
+    return `unsupported: ${codexModel}`;
+  }
+}
+
 const PROVIDERS: readonly ImageProviderId[] = ["xai", "codex"] as const;
 const QUALITIES: readonly CodexQualitySetting[] = ["auto", "low", "medium", "high"] as const;
 const BACKGROUNDS: readonly CodexBackgroundSetting[] = ["auto", "opaque", "transparent"] as const;
@@ -88,7 +101,7 @@ export async function loadConfig(
     defaultProvider: merged.defaultProvider ?? DEFAULT_PROVIDER,
     xaiModel: merged.xaiModel ?? DEFAULT_XAI_MODEL,
     codexModel: merged.codexModel ?? DEFAULT_CODEX_MODEL,
-    codexApiModel: resolveCodexApiModel(merged.codexModel ?? DEFAULT_CODEX_MODEL),
+    codexApiModel: tryResolveCodexApiModel(merged.codexModel ?? DEFAULT_CODEX_MODEL),
     codexQuality: merged.codexQuality ?? DEFAULT_CODEX_QUALITY,
     codexSize: merged.codexSize ?? DEFAULT_CODEX_SIZE,
     codexBackground: merged.codexBackground ?? DEFAULT_CODEX_BACKGROUND,
