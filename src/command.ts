@@ -125,7 +125,8 @@ const TEXT_FIELDS: TextField[] = [
   {
     id: "codexModel",
     label: "Codex model alias",
-    description: "Alias only (codex-2 / codex-2-low / codex-2-high); API model is gpt-image-2",
+    description:
+      "codex-2 / codex-2.5 aliases or gpt-image-2 / 2.5 model ids; unsupported ids fail at tool call",
     defaultDisplay: DEFAULT_CODEX_MODEL,
     get: (c) => c.codexModel,
     apply: (c, v) => {

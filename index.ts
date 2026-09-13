@@ -112,7 +112,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
       name: "image_gen",
       label: "image_gen",
       description:
-        "Generate image(s) from a text description. provider=xai uses xAI Imagine; provider=codex uses ChatGPT/Codex GPT Image 2 via official /images/generations (Pi openai-codex auth). Defaults from /imagen-settings. Requires output_path.",
+        "Generate image(s) from a text description. provider=xai uses xAI Imagine; provider=codex uses ChatGPT/Codex GPT Image 2/2.5 via official /images/generations (Pi openai-codex auth). Defaults from /imagen-settings. Requires output_path.",
       parameters: Type.Object({
         prompt: Type.String({ description: "Text description of the image to generate." }),
         output_path: Type.String({
@@ -122,7 +122,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
         provider: Type.Optional(
           Type.String({
             description:
-              'Backend: "xai" or "codex". Default from settings; inferred from codex-2* / gpt-image-2* models.',
+              'Backend: "xai" or "codex". Default from settings; inferred from codex-* / gpt-image-2* models.',
           }),
         ),
         aspect_ratio: Type.Optional(
@@ -151,7 +151,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
         ),
         model: Type.Optional(
           Type.String({
-            description: `xAI default ${XAI_IMAGINE_MODEL}. Codex aliases: ${CODEX_DEFAULT_ALIAS}, codex-2-low, codex-2-high. Defaults from /imagen-settings.`,
+            description: `xAI default ${XAI_IMAGINE_MODEL}. Codex: ${CODEX_DEFAULT_ALIAS}, codex-2-low/high, codex-2.5-flare/sunburst, or gpt-image-2 / 2.5 model ids. Defaults from /imagen-settings.`,
           }),
         ),
         n: Type.Optional(
@@ -235,7 +235,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
       name: "image_edit",
       label: "image_edit",
       description:
-        "Edit reference image(s). The prompt must describe the complete desired output and explicitly state which identity, composition, and details to preserve. provider=xai uses xAI Imagine; provider=codex uses official Codex /images/edits (gpt-image-2, max 5 refs). Use images for paths/URLs/current [Image #N] attachments, or num_last_images_to_include for recent conversation images. Requires output_path.",
+        "Edit reference image(s). The prompt must describe the complete desired output and explicitly state which identity, composition, and details to preserve. provider=xai uses xAI Imagine; provider=codex uses official Codex /images/edits (gpt-image-2/2.5, max 5 refs). Use images for paths/URLs/current [Image #N] attachments, or num_last_images_to_include for recent conversation images. Requires output_path.",
       parameters: Type.Object({
         prompt: Type.String({
           description:
@@ -272,7 +272,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
         ),
         model: Type.Optional(
           Type.String({
-            description: `xAI model override (default ${XAI_IMAGINE_MODEL}, e.g. grok-imagine-image-v2). Codex: from settings.`,
+            description: `xAI model override (default ${XAI_IMAGINE_MODEL}, e.g. grok-imagine-image-v2). Codex: gpt-image-2 / 2.5 alias or model id; default from settings.`,
           }),
         ),
         size: Type.Optional(

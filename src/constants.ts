@@ -10,6 +10,15 @@ export const CODEX_PROVIDER_ID = "openai-codex";
 export const CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
 /** Official image model used by codex-rs ext/image-generation. */
 export const CODEX_IMAGE_MODEL = "gpt-image-2";
+/**
+ * Image models this client supports (gpt-image-2 and newer). The codex
+ * backend does not validate the model string, so the whitelist lives here.
+ */
+export const CODEX_IMAGE_MODELS = [
+  "gpt-image-2",
+  "gpt-image-2.5-flare",
+  "gpt-image-2.5-sunburst",
+] as const;
 export const CODEX_DEFAULT_ALIAS = "codex-2";
 /** Official tool allows at most 5 reference images. */
 export const CODEX_MAX_EDIT_IMAGES = 5;

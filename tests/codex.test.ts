@@ -24,13 +24,22 @@ afterEach(() => {
 });
 
 describe("codex helpers", () => {
-  it("resolves aliases to quality tiers but API model stays gpt-image-2", () => {
+  it("resolves aliases and validates API models client-side", () => {
     assert.equal(resolveCodexAlias("codex-2"), "gpt-image-2-medium");
     assert.equal(resolveCodexAlias("codex-2-high"), "gpt-image-2-high");
+    assert.equal(resolveCodexAlias("codex-2.5"), "gpt-image-2.5-flare");
     assert.equal(resolveCodexApiModel("codex-2-high"), "gpt-image-2");
+    assert.equal(resolveCodexApiModel("gpt-image-2"), "gpt-image-2");
+    assert.equal(resolveCodexApiModel("codex-2.5"), "gpt-image-2.5-flare");
+    assert.equal(resolveCodexApiModel("codex-2.5-flare"), "gpt-image-2.5-flare");
+    assert.equal(resolveCodexApiModel("codex-2.5-sunburst"), "gpt-image-2.5-sunburst");
+    assert.equal(resolveCodexApiModel("gpt-image-2.5-sunburst"), "gpt-image-2.5-sunburst");
+    assert.throws(() => resolveCodexApiModel("gpt-image-1"), /unsupported codex image model/);
+    assert.throws(() => resolveCodexApiModel("gpt-image-3"), /unsupported codex image model/);
     assert.equal(resolveCodexQuality("gpt-image-2-low"), "low");
     assert.equal(resolveCodexQuality("gpt-image-2", "high"), "high");
     assert.equal(resolveCodexQuality("gpt-image-2"), "auto");
+    assert.equal(resolveCodexQuality("gpt-image-2.5-flare"), "auto");
     assert.equal(resolveCodexBackground(undefined), "auto");
     assert.equal(resolveCodexBackground("transparent"), "transparent");
   });
