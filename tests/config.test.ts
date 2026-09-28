@@ -29,6 +29,7 @@ describe("config", () => {
     const resolved = await loadConfig(dir, true);
     assert.equal(resolved.defaultProvider, DEFAULT_PROVIDER);
     assert.equal(resolved.codexQuality, "auto");
+    assert.equal(resolved.codexBackground, "opaque");
     assert.equal(resolved.codexApiModel, "gpt-image-2");
   });
 

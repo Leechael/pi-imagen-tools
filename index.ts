@@ -58,9 +58,16 @@ function formatCodexMeta(result: {
   size: string;
   background: string;
   warnings: string[];
+  generationIds?: string[];
+  imagegenRequestId?: string;
 }): string {
   const warn = result.warnings.length > 0 ? `\nwarnings: ${result.warnings.join("; ")}` : "";
-  return `provider: codex\nquality: ${result.quality}\nsize: ${result.size}\nbackground: ${result.background}${warn}`;
+  const gens =
+    result.generationIds && result.generationIds.length > 0
+      ? `\ngeneration_id: ${result.generationIds.join(", ")}`
+      : "";
+  const req = result.imagegenRequestId ? `\nimagegen_request_id: ${result.imagegenRequestId}` : "";
+  return `provider: codex\nquality: ${result.quality}\nsize: ${result.size}\nbackground: ${result.background}${gens}${req}${warn}`;
 }
 
 async function resolvedConfig(cwd: string, ctx: unknown): Promise<ResolvedImagenConfig> {

@@ -50,6 +50,9 @@ export async function postImagine(
   const baseUrl = (opts?.baseUrl ?? XAI_IMAGINE_BASE_URL).replace(/\/+$/, "");
   const fetchImpl = opts?.fetchImpl ?? fetch;
   const timeoutMs = opts?.timeoutMs ?? IMAGE_GEN_TIMEOUT_MS;
+  if (!apiKey.trim()) {
+    throw new Error("Missing xAI credentials");
+  }
 
   const controller = new AbortController();
   const onAbort = () => controller.abort();
