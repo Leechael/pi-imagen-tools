@@ -15,8 +15,8 @@ import {
   MAX_IMAGE_N,
   XAI_IMAGINE_MODEL,
   XAI_PROVIDER_ID,
-  type ImageProviderId,
 } from "./src/constants.ts";
+import { inferImageProvider } from "./src/provider.ts";
 import {
   editImages,
   formatSavedPaths,
@@ -25,24 +25,6 @@ import {
   resolveRequestedImageRefs,
 } from "./src/imagine.ts";
 import { formatSavedVideo, imageToVideo, referenceToVideo } from "./src/video.ts";
-
-function parseProvider(value: unknown, fallback: ImageProviderId): ImageProviderId {
-  if (value === undefined || value === null || value === "") return fallback;
-  if (value === "xai" || value === "codex") return value;
-  throw new Error(`provider must be "xai" or "codex", got ${String(value)}`);
-}
-
-function inferProvider(
-  params: { provider?: string; model?: string },
-  defaults: ResolvedImagenConfig,
-): ImageProviderId {
-  if (params.provider) return parseProvider(params.provider, defaults.defaultProvider);
-  const model = params.model?.trim() ?? "";
-  if (model.startsWith("codex") || model.startsWith("gpt-image-2") || model === "gpt-image-2") {
-    return "codex";
-  }
-  return defaults.defaultProvider;
-}
 
 async function requireProviderApiKey(
   ctx: ExtensionContext,
@@ -76,9 +58,16 @@ function formatCodexMeta(result: {
   size: string;
   background: string;
   warnings: string[];
+  generationIds?: string[];
+  imagegenRequestId?: string;
 }): string {
   const warn = result.warnings.length > 0 ? `\nwarnings: ${result.warnings.join("; ")}` : "";
-  return `provider: codex\nquality: ${result.quality}\nsize: ${result.size}\nbackground: ${result.background}${warn}`;
+  const gens =
+    result.generationIds && result.generationIds.length > 0
+      ? `\ngeneration_id: ${result.generationIds.join(", ")}`
+      : "";
+  const req = result.imagegenRequestId ? `\nimagegen_request_id: ${result.imagegenRequestId}` : "";
+  return `provider: codex\nquality: ${result.quality}\nsize: ${result.size}\nbackground: ${result.background}${gens}${req}${warn}`;
 }
 
 async function resolvedConfig(cwd: string, ctx: unknown): Promise<ResolvedImagenConfig> {
@@ -122,7 +111,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
         provider: Type.Optional(
           Type.String({
             description:
-              'Backend: "xai" or "codex". Default from settings; inferred from codex-* / gpt-image-2* models.',
+              'Backend: "xai" or "codex". Default from settings; inferred from codex-* / gpt-image-2* / grok-imagine-* models.',
           }),
         ),
         aspect_ratio: Type.Optional(
@@ -165,9 +154,9 @@ export default function piImagenTools(pi: ExtensionAPI): void {
       async execute(_id, params, signal, _onUpdate, ctx) {
         try {
           const defaults = await resolvedConfig(ctx.cwd, ctx);
-          const provider = inferProvider(
+          const provider = inferImageProvider(
             { provider: params.provider, model: params.model },
-            defaults,
+            defaults.defaultProvider,
           );
 
           if (provider === "codex") {
@@ -262,7 +251,8 @@ export default function piImagenTools(pi: ExtensionAPI): void {
         }),
         provider: Type.Optional(
           Type.String({
-            description: 'Backend: "xai" or "codex". Default from settings.',
+            description:
+              'Backend: "xai" or "codex". Default from settings; inferred from codex-* / gpt-image-2* / grok-imagine-* models.',
           }),
         ),
         aspect_ratio: Type.Optional(
@@ -272,7 +262,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
         ),
         model: Type.Optional(
           Type.String({
-            description: `xAI model override (default ${XAI_IMAGINE_MODEL}, e.g. grok-imagine-image-v2). Codex: gpt-image-2 / 2.5 alias or model id; default from settings.`,
+            description: `xAI model override (default ${XAI_IMAGINE_MODEL}, e.g. grok-imagine-image-2.0). Codex: gpt-image-2 / 2.5 alias or model id; default from settings.`,
           }),
         ),
         size: Type.Optional(
@@ -301,7 +291,10 @@ export default function piImagenTools(pi: ExtensionAPI): void {
       async execute(_id, params, signal, _onUpdate, ctx) {
         try {
           const defaults = await resolvedConfig(ctx.cwd, ctx);
-          const provider = inferProvider({ provider: params.provider }, defaults);
+          const provider = inferImageProvider(
+            { provider: params.provider, model: params.model },
+            defaults.defaultProvider,
+          );
 
           const images = resolveEditImages(params.images, params.num_last_images_to_include, ctx);
 
@@ -318,7 +311,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
                 prompt: params.prompt,
                 images,
                 output_path: params.output_path,
-                model: defaults.codexModel,
+                model: params.model ?? defaults.codexModel,
                 quality: params.quality ?? defaults.codexQuality,
                 aspect_ratio: params.aspect_ratio,
                 size: params.size ?? defaults.codexSize,

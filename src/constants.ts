@@ -8,18 +8,19 @@ export const XAI_VIDEO_MODEL = "grok-imagine-video-1.5";
 export const CODEX_PROVIDER_ID = "openai-codex";
 /** Official Codex images base (generations/edits under this prefix). */
 export const CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
-/** Official image model used by codex-rs ext/image-generation. */
+/** Official built-in imagegen model (codex-rs ext/image-generation IMAGE_MODEL). */
 export const CODEX_IMAGE_MODEL = "gpt-image-2";
 /**
- * Image models this client supports (gpt-image-2 and newer). The codex
- * backend does not validate the model string, so the whitelist lives here.
+ * Models this client will send. Official built-in tool only uses gpt-image-2;
+ * 2.5 ids are extra aliases the Codex backend accepts without validating.
+ * CLI fallback also documents gpt-image-1.5 / 1 / 1-mini — those stay out.
  */
 export const CODEX_IMAGE_MODELS = [
   "gpt-image-2",
   "gpt-image-2.5-flare",
   "gpt-image-2.5-sunburst",
 ] as const;
-export const CODEX_DEFAULT_ALIAS = "codex-2";
+export const CODEX_DEFAULT_ALIAS = "codex-2.5";
 /** Official tool allows at most 5 reference images. */
 export const CODEX_MAX_EDIT_IMAGES = 5;
 

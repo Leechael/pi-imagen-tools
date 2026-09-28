@@ -45,7 +45,7 @@ export const DEFAULT_XAI_MODEL = XAI_IMAGINE_MODEL;
 export const DEFAULT_CODEX_MODEL = CODEX_DEFAULT_ALIAS;
 export const DEFAULT_CODEX_QUALITY: CodexQualitySetting = "auto";
 export const DEFAULT_CODEX_SIZE = "auto";
-export const DEFAULT_CODEX_BACKGROUND: CodexBackgroundSetting = "auto";
+export const DEFAULT_CODEX_BACKGROUND: CodexBackgroundSetting = "opaque";
 
 /**
  * Non-fatal API model resolution for status display. An unsupported

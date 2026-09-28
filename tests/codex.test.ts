@@ -12,6 +12,7 @@ import {
   resolveCodexApiModel,
   resolveCodexBackground,
   resolveCodexQuality,
+  toCodexImageRef,
 } from "../src/codex.ts";
 
 const dirs: string[] = [];
@@ -25,6 +26,7 @@ afterEach(() => {
 
 describe("codex helpers", () => {
   it("resolves aliases and validates API models client-side", () => {
+    assert.equal(resolveCodexApiModel(undefined), "gpt-image-2.5-flare");
     assert.equal(resolveCodexAlias("codex-2"), "gpt-image-2-medium");
     assert.equal(resolveCodexAlias("codex-2-high"), "gpt-image-2-high");
     assert.equal(resolveCodexAlias("codex-2.5"), "gpt-image-2.5-flare");
@@ -40,7 +42,7 @@ describe("codex helpers", () => {
     assert.equal(resolveCodexQuality("gpt-image-2", "high"), "high");
     assert.equal(resolveCodexQuality("gpt-image-2"), "auto");
     assert.equal(resolveCodexQuality("gpt-image-2.5-flare"), "auto");
-    assert.equal(resolveCodexBackground(undefined), "auto");
+    assert.equal(resolveCodexBackground(undefined), "opaque");
     assert.equal(resolveCodexBackground("transparent"), "transparent");
   });
 
@@ -104,7 +106,8 @@ describe("codex helpers", () => {
     assert.equal(captured.body?.prompt, "a cat");
     assert.equal(captured.body?.quality, "medium");
     assert.equal(captured.body?.size, "1536x1024");
-    assert.equal(captured.body?.background, "auto");
+    assert.equal(captured.body?.background, "opaque");
+    assert.deepEqual(result.generationIds, []);
   });
 
   it("editCodexImages posts /images/edits with image_url refs", async () => {
@@ -136,7 +139,7 @@ describe("codex helpers", () => {
     assert.equal(result.paths[0], out);
     assert.equal(readFileSync(out).toString(), "edited");
     assert.equal(url, "https://chatgpt.com/backend-api/codex/images/edits");
-    assert.equal(body.model, "gpt-image-2");
+    assert.equal(body.model, "gpt-image-2.5-flare");
     assert.deepEqual(body.images, [
       { image_url: `data:image/png;base64,${png.toString("base64")}` },
     ]);
@@ -211,7 +214,7 @@ describe("codex helpers", () => {
 
     assert.equal(result.quality, "medium");
     assert.equal(result.size, "auto");
-    assert.equal(result.background, "auto");
+    assert.equal(result.background, "opaque");
   });
 
   it("describeCodexHttpError surfaces usage-limit details", () => {
@@ -244,5 +247,78 @@ describe("codex helpers", () => {
       describeCodexHttpError(500, "<html>oops</html>", noHeaders),
       "Codex Images API HTTP 500: <html>oops</html>",
     );
+    assert.match(
+      describeCodexHttpError(
+        500,
+        "<html>oops</html>",
+        new Headers({ "x-codex-imagegen-request-id": "req-html-1" }),
+      ),
+      /imagegen_request_id: req-html-1/,
+    );
+    assert.match(
+      describeCodexHttpError(
+        500,
+        JSON.stringify({ error: { message: "boom" } }),
+        new Headers({ "x-codex-imagegen-request-id": "req-imagegen-123" }),
+      ),
+      /imagegen_request_id: req-imagegen-123/,
+    );
+  });
+
+  it("editCodexImages sends pathless ids as file_id", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pi-imagen-codex-fileid-"));
+    dirs.push(dir);
+    const out = join(dir, "edit.png");
+    const b64 = Buffer.from("edited").toString("base64");
+    let body: Record<string, unknown> = {};
+
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      return new Response(JSON.stringify({ created: 1, data: [{ b64_json: b64 }] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    await editCodexImages(
+      { apiKey: "tok", accountId: "acc-1" },
+      { prompt: "make blue", images: ["file-image"], output_path: out },
+      { fetchImpl, cwd: dir },
+    );
+
+    assert.deepEqual(body.images, [{ file_id: "file-image" }]);
+    assert.deepEqual(toCodexImageRef("file-image", dir), { file_id: "file-image" });
+    assert.throws(() => toCodexImageRef("cat.png", dir), /image reference not readable/);
+  });
+
+  it("preserves generation_id and imagegen request id", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pi-imagen-codex-ids-"));
+    dirs.push(dir);
+    const out = join(dir, "out.png");
+    const b64 = Buffer.from("img").toString("base64");
+
+    const fetchImpl: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          created: 1,
+          data: [{ generation_id: "gen-skip" }, { b64_json: b64, generation_id: "gen-first" }],
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "x-codex-imagegen-request-id": "req-imagegen-123",
+          },
+        },
+      );
+
+    const result = await generateCodexImages(
+      { apiKey: "tok", accountId: "acc-1" },
+      { prompt: "a cat", output_path: out },
+      { fetchImpl, cwd: dir },
+    );
+
+    assert.deepEqual(result.generationIds, ["gen-first"]);
+    assert.equal(result.imagegenRequestId, "req-imagegen-123");
   });
 });

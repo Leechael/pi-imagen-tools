@@ -63,15 +63,19 @@ export type CodexImageResult = {
   size: string;
   background: CodexBackground;
   warnings: string[];
+  generationIds: string[];
+  imagegenRequestId?: string;
 };
 
 export type CodexApiResponse = {
   created?: number;
-  data?: Array<{ b64_json?: string }>;
+  data?: Array<{ b64_json?: string; generation_id?: string }>;
   quality?: string;
   size?: string;
   background?: string;
 };
+
+export type CodexImageRef = { image_url: string } | { file_id: string };
 
 export function resolveCodexAlias(input: string | undefined): string {
   const raw = (input ?? CODEX_DEFAULT_ALIAS).trim() || CODEX_DEFAULT_ALIAS;
@@ -110,8 +114,26 @@ export function resolveCodexQuality(modelId: string, qualityOverride?: string): 
 export function resolveCodexBackground(value?: string): CodexBackground {
   const v = value?.trim().toLowerCase();
   if (v === "transparent" || v === "opaque" || v === "auto") return v;
-  if (!v) return "auto";
+  // Official imagegen tool maps omitted transparent_background → opaque.
+  if (!v) return "opaque";
   throw new Error(`background must be transparent|opaque|auto, got ${value}`);
+}
+
+/** OpenAI/Codex file ids look like `file-...` or `file_...`. */
+const CODEX_FILE_ID_RE = /^file[-_][A-Za-z0-9_-]+$/;
+
+/**
+ * Codex edits accept untagged ImageReference: `{ image_url }` or `{ file_id }`.
+ * Only `file-` / `file_` ids become file_id; missing local files still error.
+ */
+export function toCodexImageRef(ref: string, cwd = process.cwd()): CodexImageRef {
+  const cleaned = ref.trim();
+  if (!cleaned) throw new Error("empty image reference");
+  if (CODEX_FILE_ID_RE.test(cleaned)) return { file_id: cleaned };
+  if (/^https?:\/\//i.test(cleaned) || /^data:image\//i.test(cleaned)) {
+    return { image_url: cleaned };
+  }
+  return { image_url: resolveImagineImageRef(cleaned, cwd) };
 }
 
 /**
@@ -181,6 +203,17 @@ function codexHeaders(credential: CodexCredential): Record<string, string> {
 }
 
 const CODEX_ACTIVE_LIMIT_HEADER = "x-codex-active-limit";
+const CODEX_IMAGEGEN_REQUEST_ID_HEADER = "x-codex-imagegen-request-id";
+
+function imagegenRequestIdFrom(headers: Headers): string | undefined {
+  const id = headers.get(CODEX_IMAGEGEN_REQUEST_ID_HEADER)?.trim();
+  return id || undefined;
+}
+
+function withImagegenRequestId(message: string, headers: Headers): string {
+  const id = imagegenRequestIdFrom(headers);
+  return id ? `${message} (imagegen_request_id: ${id})` : message;
+}
 
 /**
  * Mirror codex-rs map_api_error: surface usage-limit failures (429 with
@@ -195,7 +228,7 @@ export function describeCodexHttpError(status: number, body: string, headers: He
   try {
     parsed = JSON.parse(body) as typeof parsed;
   } catch {
-    return fallback;
+    return withImagegenRequestId(fallback, headers);
   }
   const error = parsed?.error;
   const errorType = typeof error?.type === "string" ? error.type : undefined;
@@ -206,15 +239,23 @@ export function describeCodexHttpError(status: number, body: string, headers: He
     const resetText = resetsAt
       ? `; limit resets at ${new Date(resetsAt * 1000).toISOString()}`
       : "";
-    return `Codex Images API usage limit reached${limitText}${resetText}. Do not retry until the limit resets.`;
+    return withImagegenRequestId(
+      `Codex Images API usage limit reached${limitText}${resetText}. Do not retry until the limit resets.`,
+      headers,
+    );
   }
   if (status === 429 && errorType === "usage_not_included") {
-    return "Codex Images API: image generation is not included in the current plan (usage_not_included).";
+    return withImagegenRequestId(
+      "Codex Images API: image generation is not included in the current plan (usage_not_included).",
+      headers,
+    );
   }
   const message =
     typeof error?.message === "string" && error.message.trim() ? error.message : undefined;
-  if (message) return `Codex Images API HTTP ${status}: ${message}`;
-  return fallback;
+  if (message) {
+    return withImagegenRequestId(`Codex Images API HTTP ${status}: ${message}`, headers);
+  }
+  return withImagegenRequestId(fallback, headers);
 }
 
 export async function postCodexImages(
@@ -222,7 +263,7 @@ export async function postCodexImages(
   path: "/images/generations" | "/images/edits",
   body: Record<string, unknown>,
   opts?: { baseUrl?: string; fetchImpl?: typeof fetch; signal?: AbortSignal; timeoutMs?: number },
-): Promise<CodexApiResponse> {
+): Promise<{ json: CodexApiResponse; imagegenRequestId?: string }> {
   const baseUrl = (opts?.baseUrl ?? CODEX_BASE_URL).replace(/\/+$/, "");
   const fetchImpl = opts?.fetchImpl ?? fetch;
   const timeoutMs = opts?.timeoutMs ?? IMAGE_GEN_TIMEOUT_MS;
@@ -243,7 +284,10 @@ export async function postCodexImages(
       const text = await res.text().catch(() => "");
       throw new Error(describeCodexHttpError(res.status, text, res.headers));
     }
-    return (await res.json()) as CodexApiResponse;
+    return {
+      json: (await res.json()) as CodexApiResponse,
+      imagegenRequestId: imagegenRequestIdFrom(res.headers),
+    };
   } catch (error) {
     if (controller.signal.aborted && opts?.signal?.aborted) {
       throw new Error("Image request cancelled");
@@ -258,18 +302,29 @@ export async function postCodexImages(
   }
 }
 
-function extractB64List(json: CodexApiResponse, expected: number): string[] {
-  const items = json.data ?? [];
-  const b64s = items
-    .map((item) => item.b64_json)
-    .filter((v): v is string => typeof v === "string" && v.length > 0);
-  if (b64s.length === 0) {
+function extractImageData(
+  json: CodexApiResponse,
+  expected: number,
+): { b64s: string[]; generationIds: string[] } {
+  const withImages = (json.data ?? []).filter(
+    (item): item is { b64_json: string; generation_id?: string } =>
+      typeof item.b64_json === "string" && item.b64_json.length > 0,
+  );
+  if (withImages.length === 0) {
     throw new Error("Codex Images API returned no b64_json data");
   }
-  if (b64s.length < expected) {
-    throw new Error(`Codex Images API returned ${b64s.length} image(s), expected ${expected}`);
+  if (withImages.length < expected) {
+    throw new Error(
+      `Codex Images API returned ${withImages.length} image(s), expected ${expected}`,
+    );
   }
-  return b64s.slice(0, expected);
+  const selected = withImages.slice(0, expected);
+  return {
+    b64s: selected.map((item) => item.b64_json),
+    generationIds: selected
+      .map((item) => item.generation_id)
+      .filter((v): v is string => typeof v === "string" && v.length > 0),
+  };
 }
 
 const QUALITY_VALUES: readonly CodexQuality[] = ["low", "medium", "high", "auto"];
@@ -355,8 +410,13 @@ export async function generateCodexImages(
     n: common.n,
   });
 
-  const json = await postCodexImages(credential, "/images/generations", body, opts);
-  const b64s = extractB64List(json, common.n);
+  const { json, imagegenRequestId } = await postCodexImages(
+    credential,
+    "/images/generations",
+    body,
+    opts,
+  );
+  const { b64s, generationIds } = extractImageData(json, common.n);
   const paths = saveAll(b64s, params.output_path, common.n, cwd);
   const meta = echoedMeta(json, common);
 
@@ -368,6 +428,8 @@ export async function generateCodexImages(
     size: meta.size,
     background: meta.background,
     warnings: common.warnings,
+    generationIds,
+    imagegenRequestId,
   };
 }
 
@@ -385,9 +447,7 @@ export async function editCodexImages(
     throw new Error(`codex image_edit supports at most ${CODEX_MAX_EDIT_IMAGES} reference images`);
   }
 
-  const images = refs.map((ref) => ({
-    image_url: resolveImagineImageRef(ref, cwd),
-  }));
+  const images = refs.map((ref) => toCodexImageRef(ref, cwd));
 
   const body = {
     ...buildCommonFields({
@@ -401,8 +461,13 @@ export async function editCodexImages(
     images,
   };
 
-  const json = await postCodexImages(credential, "/images/edits", body, opts);
-  const b64s = extractB64List(json, common.n);
+  const { json, imagegenRequestId } = await postCodexImages(
+    credential,
+    "/images/edits",
+    body,
+    opts,
+  );
+  const { b64s, generationIds } = extractImageData(json, common.n);
   const paths = saveAll(b64s, params.output_path, common.n, cwd);
   const meta = echoedMeta(json, common);
 
@@ -414,5 +479,7 @@ export async function editCodexImages(
     size: meta.size,
     background: meta.background,
     warnings: common.warnings,
+    generationIds,
+    imagegenRequestId,
   };
 }

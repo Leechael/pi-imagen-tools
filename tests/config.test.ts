@@ -29,7 +29,9 @@ describe("config", () => {
     const resolved = await loadConfig(dir, true);
     assert.equal(resolved.defaultProvider, DEFAULT_PROVIDER);
     assert.equal(resolved.codexQuality, "auto");
-    assert.equal(resolved.codexApiModel, "gpt-image-2");
+    assert.equal(resolved.codexBackground, "opaque");
+    assert.equal(resolved.codexModel, "codex-2.5");
+    assert.equal(resolved.codexApiModel, "gpt-image-2.5-flare");
   });
 
   it("saves project config and merges", async () => {

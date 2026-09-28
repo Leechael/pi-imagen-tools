@@ -125,6 +125,13 @@ describe("imagine", () => {
     assert.equal(captured.body?.response_format, "b64_json");
   });
 
+  it("refuses to call Imagine with an empty bearer", async () => {
+    await assert.rejects(
+      () => generateImages("", { prompt: "a cat", output_path: "/tmp/x.jpg" }),
+      /Missing xAI credentials/,
+    );
+  });
+
   it("editImages sends single image url object", async () => {
     const dir = tempDir();
     const ref = join(dir, "in.png");

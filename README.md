@@ -55,8 +55,9 @@ Every tool resolves credentials through Pi's public `getApiKeyForProvider` API. 
   - video: `/videos/generations`
 - Codex (official codex-rs image-generation surface): `https://chatgpt.com/backend-api/codex`
   - generate: `POST /images/generations`
-  - edit: `POST /images/edits` with `images: [{ image_url }]` (max 5)
-  - model always `gpt-image-2`; quality / size / background are separate fields
+  - edit: `POST /images/edits` with `images: [{ image_url } | { file_id }]` (max 5)
+  - this client's default is `gpt-image-2.5-flare` (`codex-2.5`); official Codex built-in tool still uses `gpt-image-2`
+  - also: `gpt-image-2`, `gpt-image-2.5-sunburst`; quality / size / background are separate fields
 
 ## Settings
 
@@ -79,10 +80,10 @@ Fields:
 | ----------------- | ---------------------------- | ----------------------------------------------- |
 | `defaultProvider` | `xai`                        | `xai` or `codex` when the tool omits `provider` |
 | `xaiModel`        | `grok-imagine-image-quality` | default xAI model for `image_gen`               |
-| `codexModel`      | `codex-2`                    | alias only; API model stays `gpt-image-2`       |
+| `codexModel`      | `codex-2.5`                  | alias; API model `gpt-image-2.5-flare`          |
 | `codexQuality`    | `auto`                       | `auto` / `low` / `medium` / `high`              |
 | `codexSize`       | `auto`                       | `auto` / `1K`/`2K`/`4K` / explicit `WxH`        |
-| `codexBackground` | `auto`                       | `auto` / `opaque` / `transparent`               |
+| `codexBackground` | `opaque`                     | `auto` / `opaque` / `transparent`               |
 
 Environment overrides:
 
@@ -99,7 +100,7 @@ Environment overrides:
 {
   "defaultProvider": "xai",
   "xaiModel": "grok-imagine-image-quality",
-  "codexModel": "codex-2",
+  "codexModel": "codex-2.5",
   "codexQuality": "high",
   "codexSize": "auto",
   "codexBackground": "opaque"
@@ -128,17 +129,17 @@ Generate image(s) from a text prompt.
 
 Edit from reference images. Provide either `images` or `num_last_images_to_include`, not both empty.
 
-| Param                             | Required    | Notes                                                                    |
-| --------------------------------- | ----------- | ------------------------------------------------------------------------ |
-| `prompt`                          | yes         | complete desired output, including what must be preserved                |
-| `images`                          | conditional | paths / https / data URI / current `[Image #N]`; **Codex max 5**         |
-| `num_last_images_to_include`      | conditional | newest 1–5 conversation images                                           |
-| `output_path`                     | yes         | same rules as gen                                                        |
-| `provider`                        | no          | `xai` (default) or `codex`                                               |
-| `aspect_ratio`                    | no          | xAI multi-ref; Codex size mapping                                        |
-| `model`                           | no          | xAI override (default `grok-imagine-image-quality`); Codex from settings |
-| `size` / `quality` / `background` | no          | Codex only                                                               |
-| `n`                               | no          | default 1, max 10                                                        |
+| Param                             | Required    | Notes                                                                              |
+| --------------------------------- | ----------- | ---------------------------------------------------------------------------------- |
+| `prompt`                          | yes         | complete desired output, including what must be preserved                          |
+| `images`                          | conditional | paths / https / data URI / current `[Image #N]` / Codex `file_id`; **Codex max 5** |
+| `num_last_images_to_include`      | conditional | newest 1–5 conversation images                                                     |
+| `output_path`                     | yes         | same rules as gen                                                                  |
+| `provider`                        | no          | `xai` (default) or `codex`                                                         |
+| `aspect_ratio`                    | no          | xAI multi-ref; Codex size mapping                                                  |
+| `model`                           | no          | xAI override (default `grok-imagine-image-quality`); Codex from settings           |
+| `size` / `quality` / `background` | no          | Codex only                                                                         |
+| `n`                               | no          | default 1, max 10                                                                  |
 
 ### `image_to_video` (xAI only)
 
