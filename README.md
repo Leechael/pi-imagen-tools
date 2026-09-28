@@ -56,8 +56,8 @@ Every tool resolves credentials through Pi's public `getApiKeyForProvider` API. 
 - Codex (official codex-rs image-generation surface): `https://chatgpt.com/backend-api/codex`
   - generate: `POST /images/generations`
   - edit: `POST /images/edits` with `images: [{ image_url } | { file_id }]` (max 5)
-  - official built-in model is `gpt-image-2`; quality / size / background are separate fields
-  - this client also allows `gpt-image-2.5-flare` / `gpt-image-2.5-sunburst`
+  - this client's default is `gpt-image-2.5-flare` (`codex-2.5`); official Codex built-in tool still uses `gpt-image-2`
+  - also: `gpt-image-2`, `gpt-image-2.5-sunburst`; quality / size / background are separate fields
 
 ## Settings
 
@@ -80,7 +80,7 @@ Fields:
 | ----------------- | ---------------------------- | ----------------------------------------------- |
 | `defaultProvider` | `xai`                        | `xai` or `codex` when the tool omits `provider` |
 | `xaiModel`        | `grok-imagine-image-quality` | default xAI model for `image_gen`               |
-| `codexModel`      | `codex-2`                    | alias; API model `gpt-image-2` (or 2.5 if set)  |
+| `codexModel`      | `codex-2.5`                  | alias; API model `gpt-image-2.5-flare`          |
 | `codexQuality`    | `auto`                       | `auto` / `low` / `medium` / `high`              |
 | `codexSize`       | `auto`                       | `auto` / `1K`/`2K`/`4K` / explicit `WxH`        |
 | `codexBackground` | `opaque`                     | `auto` / `opaque` / `transparent`               |
@@ -100,7 +100,7 @@ Environment overrides:
 {
   "defaultProvider": "xai",
   "xaiModel": "grok-imagine-image-quality",
-  "codexModel": "codex-2",
+  "codexModel": "codex-2.5",
   "codexQuality": "high",
   "codexSize": "auto",
   "codexBackground": "opaque"

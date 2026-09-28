@@ -20,7 +20,7 @@ export const CODEX_IMAGE_MODELS = [
   "gpt-image-2.5-flare",
   "gpt-image-2.5-sunburst",
 ] as const;
-export const CODEX_DEFAULT_ALIAS = "codex-2";
+export const CODEX_DEFAULT_ALIAS = "codex-2.5";
 /** Official tool allows at most 5 reference images. */
 export const CODEX_MAX_EDIT_IMAGES = 5;
 

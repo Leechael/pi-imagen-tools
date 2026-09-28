@@ -26,6 +26,7 @@ afterEach(() => {
 
 describe("codex helpers", () => {
   it("resolves aliases and validates API models client-side", () => {
+    assert.equal(resolveCodexApiModel(undefined), "gpt-image-2.5-flare");
     assert.equal(resolveCodexAlias("codex-2"), "gpt-image-2-medium");
     assert.equal(resolveCodexAlias("codex-2-high"), "gpt-image-2-high");
     assert.equal(resolveCodexAlias("codex-2.5"), "gpt-image-2.5-flare");
@@ -138,7 +139,7 @@ describe("codex helpers", () => {
     assert.equal(result.paths[0], out);
     assert.equal(readFileSync(out).toString(), "edited");
     assert.equal(url, "https://chatgpt.com/backend-api/codex/images/edits");
-    assert.equal(body.model, "gpt-image-2");
+    assert.equal(body.model, "gpt-image-2.5-flare");
     assert.deepEqual(body.images, [
       { image_url: `data:image/png;base64,${png.toString("base64")}` },
     ]);
