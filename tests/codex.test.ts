@@ -250,6 +250,14 @@ describe("codex helpers", () => {
     assert.match(
       describeCodexHttpError(
         500,
+        "<html>oops</html>",
+        new Headers({ "x-codex-imagegen-request-id": "req-html-1" }),
+      ),
+      /imagegen_request_id: req-html-1/,
+    );
+    assert.match(
+      describeCodexHttpError(
+        500,
         JSON.stringify({ error: { message: "boom" } }),
         new Headers({ "x-codex-imagegen-request-id": "req-imagegen-123" }),
       ),
@@ -280,6 +288,7 @@ describe("codex helpers", () => {
 
     assert.deepEqual(body.images, [{ file_id: "file-image" }]);
     assert.deepEqual(toCodexImageRef("file-image", dir), { file_id: "file-image" });
+    assert.throws(() => toCodexImageRef("cat.png", dir), /image reference not readable/);
   });
 
   it("preserves generation_id and imagegen request id", async () => {
@@ -292,7 +301,7 @@ describe("codex helpers", () => {
       new Response(
         JSON.stringify({
           created: 1,
-          data: [{ b64_json: b64, generation_id: "gen-first" }],
+          data: [{ generation_id: "gen-skip" }, { b64_json: b64, generation_id: "gen-first" }],
         }),
         {
           status: 200,

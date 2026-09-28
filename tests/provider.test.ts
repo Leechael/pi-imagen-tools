@@ -37,5 +37,9 @@ describe("inferImageProvider", () => {
 
   it("rejects an invalid provider id", () => {
     assert.throws(() => parseImageProvider("openai"), /provider must be "xai" or "codex"/);
+    assert.throws(
+      () => inferImageProvider({ provider: "" }, "xai"),
+      /provider must be "xai" or "codex"/,
+    );
   });
 });

@@ -119,24 +119,21 @@ export function resolveCodexBackground(value?: string): CodexBackground {
   throw new Error(`background must be transparent|opaque|auto, got ${value}`);
 }
 
+/** OpenAI/Codex file ids look like `file-...` or `file_...`. */
+const CODEX_FILE_ID_RE = /^file[-_][A-Za-z0-9_-]+$/;
+
 /**
  * Codex edits accept untagged ImageReference: `{ image_url }` or `{ file_id }`.
- * Local paths / URLs / data URIs stay inline; a pathless id is sent as file_id.
+ * Only `file-` / `file_` ids become file_id; missing local files still error.
  */
 export function toCodexImageRef(ref: string, cwd = process.cwd()): CodexImageRef {
   const cleaned = ref.trim();
   if (!cleaned) throw new Error("empty image reference");
+  if (CODEX_FILE_ID_RE.test(cleaned)) return { file_id: cleaned };
   if (/^https?:\/\//i.test(cleaned) || /^data:image\//i.test(cleaned)) {
     return { image_url: cleaned };
   }
-  try {
-    return { image_url: resolveImagineImageRef(cleaned, cwd) };
-  } catch (error) {
-    if (!cleaned.includes("/") && !cleaned.includes("\\") && !cleaned.startsWith("file:")) {
-      return { file_id: cleaned };
-    }
-    throw error;
-  }
+  return { image_url: resolveImagineImageRef(cleaned, cwd) };
 }
 
 /**
@@ -231,7 +228,7 @@ export function describeCodexHttpError(status: number, body: string, headers: He
   try {
     parsed = JSON.parse(body) as typeof parsed;
   } catch {
-    return fallback;
+    return withImagegenRequestId(fallback, headers);
   }
   const error = parsed?.error;
   const errorType = typeof error?.type === "string" ? error.type : undefined;
@@ -309,21 +306,25 @@ function extractImageData(
   json: CodexApiResponse,
   expected: number,
 ): { b64s: string[]; generationIds: string[] } {
-  const items = json.data ?? [];
-  const b64s = items
-    .map((item) => item.b64_json)
-    .filter((v): v is string => typeof v === "string" && v.length > 0);
-  if (b64s.length === 0) {
+  const withImages = (json.data ?? []).filter(
+    (item): item is { b64_json: string; generation_id?: string } =>
+      typeof item.b64_json === "string" && item.b64_json.length > 0,
+  );
+  if (withImages.length === 0) {
     throw new Error("Codex Images API returned no b64_json data");
   }
-  if (b64s.length < expected) {
-    throw new Error(`Codex Images API returned ${b64s.length} image(s), expected ${expected}`);
+  if (withImages.length < expected) {
+    throw new Error(
+      `Codex Images API returned ${withImages.length} image(s), expected ${expected}`,
+    );
   }
-  const generationIds = items
-    .slice(0, expected)
-    .map((item) => item.generation_id)
-    .filter((v): v is string => typeof v === "string" && v.length > 0);
-  return { b64s: b64s.slice(0, expected), generationIds };
+  const selected = withImages.slice(0, expected);
+  return {
+    b64s: selected.map((item) => item.b64_json),
+    generationIds: selected
+      .map((item) => item.generation_id)
+      .filter((v): v is string => typeof v === "string" && v.length > 0),
+  };
 }
 
 const QUALITY_VALUES: readonly CodexQuality[] = ["low", "medium", "high", "auto"];

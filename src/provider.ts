@@ -23,9 +23,10 @@ export function inferImageProvider(
   defaultProvider: ImageProviderId,
 ): ImageProviderId {
   const family = imageModelFamily(params.model);
-  const provider = params.provider
-    ? parseImageProvider(params.provider)
-    : (family ?? defaultProvider);
+  const provider =
+    params.provider === undefined
+      ? (family ?? defaultProvider)
+      : parseImageProvider(params.provider);
   if (family && family !== provider) {
     throw new Error(
       `model ${JSON.stringify(params.model?.trim())} requires provider "${family}", not "${provider}"`,

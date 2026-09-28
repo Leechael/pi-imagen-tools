@@ -111,7 +111,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
         provider: Type.Optional(
           Type.String({
             description:
-              'Backend: "xai" or "codex". Default from settings; inferred from codex-* / gpt-image-2* models.',
+              'Backend: "xai" or "codex". Default from settings; inferred from codex-* / gpt-image-2* / grok-imagine-* models.',
           }),
         ),
         aspect_ratio: Type.Optional(
@@ -251,7 +251,8 @@ export default function piImagenTools(pi: ExtensionAPI): void {
         }),
         provider: Type.Optional(
           Type.String({
-            description: 'Backend: "xai" or "codex". Default from settings.',
+            description:
+              'Backend: "xai" or "codex". Default from settings; inferred from codex-* / gpt-image-2* / grok-imagine-* models.',
           }),
         ),
         aspect_ratio: Type.Optional(
