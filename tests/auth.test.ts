@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
@@ -105,5 +105,108 @@ describe("auth helpers", () => {
 
     assert.deepEqual(providersRead, ["xai"]);
     assert.equal(readFileSync(output, "utf8"), "image");
+  });
+
+  it("image_edit with a gpt-image model uses openai-codex, not xai", async () => {
+    const tools = new Map<string, { execute: (...args: unknown[]) => Promise<unknown> }>();
+    piImagenTools({
+      registerProvider() {},
+      registerTool(tool: { name: string; execute: (...args: unknown[]) => Promise<unknown> }) {
+        tools.set(tool.name, tool);
+      },
+      registerCommand() {},
+    } as never);
+
+    const dir = mkdtempSync(join(tmpdir(), "pi-imagen-edit-route-"));
+    const ref = join(dir, "ref.png");
+    writeFileSync(ref, Buffer.from("89504e470d0a1a0a0000000d49484452", "hex"));
+    const output = join(dir, "edit.png");
+    const providersRead: string[] = [];
+    const urls: string[] = [];
+    const bodies: Array<Record<string, unknown>> = [];
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async (input, init) => {
+      urls.push(String(input));
+      bodies.push(JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>);
+      return new Response(
+        JSON.stringify({
+          created: 1,
+          data: [{ b64_json: Buffer.from("edited").toString("base64") }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    };
+    const token = jwt({
+      "https://api.openai.com/auth": { chatgpt_account_id: "acct_1" },
+    });
+    try {
+      const result = (await tools.get("image_edit")!.execute(
+        "call-2",
+        {
+          prompt: "make blue",
+          images: [ref],
+          output_path: output,
+          model: "gpt-image-2.5-flare",
+        },
+        undefined,
+        undefined,
+        {
+          cwd: dir,
+          sessionManager: { getBranch: () => [] },
+          modelRegistry: {
+            async getApiKeyForProvider(provider: string) {
+              providersRead.push(provider);
+              return token;
+            },
+          },
+        },
+      )) as { isError?: boolean };
+      assert.equal(result.isError, undefined);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+
+    assert.deepEqual(providersRead, ["openai-codex"]);
+    assert.equal(urls[0], "https://chatgpt.com/backend-api/codex/images/edits");
+    assert.equal(bodies[0]?.model, "gpt-image-2.5-flare");
+    assert.equal(readFileSync(output, "utf8"), "edited");
+  });
+
+  it("refuses to send a Codex model with an xAI key", async () => {
+    const tools = new Map<string, { execute: (...args: unknown[]) => Promise<unknown> }>();
+    piImagenTools({
+      registerProvider() {},
+      registerTool(tool: { name: string; execute: (...args: unknown[]) => Promise<unknown> }) {
+        tools.set(tool.name, tool);
+      },
+      registerCommand() {},
+    } as never);
+
+    const dir = mkdtempSync(join(tmpdir(), "pi-imagen-mismatch-"));
+    const providersRead: string[] = [];
+    const result = (await tools.get("image_gen")!.execute(
+      "call-3",
+      {
+        prompt: "test",
+        provider: "xai",
+        model: "gpt-image-2",
+        output_path: join(dir, "out.png"),
+      },
+      undefined,
+      undefined,
+      {
+        cwd: dir,
+        modelRegistry: {
+          async getApiKeyForProvider(provider: string) {
+            providersRead.push(provider);
+            return "should-not-be-used";
+          },
+        },
+      },
+    )) as { isError?: boolean; details?: { error?: string } };
+
+    assert.equal(result.isError, true);
+    assert.match(result.details?.error ?? "", /requires provider "codex", not "xai"/);
+    assert.deepEqual(providersRead, []);
   });
 });
