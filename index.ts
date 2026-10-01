@@ -24,6 +24,7 @@ import {
   recentConversationImageRefs,
   resolveRequestedImageRefs,
 } from "./src/imagine.ts";
+import { registerXaiImageModels } from "./src/image-models.ts";
 import { formatSavedVideo, imageToVideo, referenceToVideo } from "./src/video.ts";
 
 /** Shared tool annotations: image/video tools call external APIs and write files. */
@@ -114,7 +115,7 @@ function resolveEditImages(
 }
 
 export default function piImagenTools(pi: ExtensionAPI): void {
-  pi.registerProvider(XAI_PROVIDER_ID, { oauth: createXaiOAuth() });
+  registerXaiImageModels(pi, createXaiOAuth());
   registerSettingsCommand(pi);
 
   pi.registerTool(
