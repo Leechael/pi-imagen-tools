@@ -49,6 +49,23 @@ Or add the absolute path to Pi `settings.json` packages.
 
 Every tool resolves credentials through Pi's public `getApiKeyForProvider` API. Pi owns credential precedence, persistence, refresh locking, and configured auth paths.
 
+### Reuse the xAI login from MCP servers
+
+Since pi 0.99.2, HTTP MCP servers can send this extension's `xai` credential as their bearer token, so one `/login xai` covers both the image/video tools and any xAI-backed MCP server:
+
+```json
+{
+  "mcpServers": {
+    "my-xai-server": {
+      "url": "https://example.com/mcp",
+      "auth": { "provider": "xai" }
+    }
+  }
+}
+```
+
+The token is read on every request, so OAuth refreshes apply automatically. Constraints from pi: only allowed in the global `mcp.json` or from extensions, and the server URL must be `https` except on loopback hosts.
+
 ### API bases
 
 - xAI media: `https://api.x.ai/v1`
