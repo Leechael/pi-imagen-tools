@@ -26,6 +26,7 @@ Pi is a small harness you adapt to your own workflow. Image and video generation
 - **Codex via existing Pi auth** — uses the built-in `openai-codex` provider credentials.
 - **`/imagen-settings`** — interactive TUI plus `status` / `reset` subcommands.
 - **Sensible output path handling** — relative paths resolve to cwd; multi-`n` expands `{i}` or `-1`, `-2`, … suffixes.
+- **Image model catalog entry** — registers `xai/grok-imagine-image-quality` as a pi image model (pi ≥ 0.99), visible via `getModelsOfType("image", "xai")` with a `generateImages` implementation backed by the same runtime-resolved `/login xai` credential. Interactive `image_gen`/`image_edit` remain the primary surface.
 
 ## Install
 
@@ -47,6 +48,23 @@ Or add the absolute path to Pi `settings.json` packages.
 | `codex`         | `openai-codex` | `/login openai-codex` (ChatGPT OAuth; needs account id in the access token) |
 
 Every tool resolves credentials through Pi's public `getApiKeyForProvider` API. Pi owns credential precedence, persistence, refresh locking, and configured auth paths.
+
+### Reuse the xAI login from MCP servers
+
+Since pi 0.99.2, HTTP MCP servers can send this extension's `xai` credential as their bearer token, so one `/login xai` covers both the image/video tools and any xAI-backed MCP server:
+
+```json
+{
+  "mcpServers": {
+    "my-xai-server": {
+      "url": "https://example.com/mcp",
+      "auth": { "provider": "xai" }
+    }
+  }
+}
+```
+
+The token is read on every request, so OAuth refreshes apply automatically. Constraints from pi: only allowed in the global `mcp.json` or from extensions, and the server URL must be `https` except on loopback hosts.
 
 ### API bases
 

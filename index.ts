@@ -24,7 +24,29 @@ import {
   recentConversationImageRefs,
   resolveRequestedImageRefs,
 } from "./src/imagine.ts";
+import { registerXaiImageModels } from "./src/image-models.ts";
 import { formatSavedVideo, imageToVideo, referenceToVideo } from "./src/video.ts";
+
+/** Shared tool annotations: image/video tools call external APIs and write files. */
+const IMAGEN_ANNOTATIONS = { readOnlyHint: false, openWorldHint: true } as const;
+
+/** Machine-readable success result for image_gen / image_edit. */
+const IMAGE_TOOL_RESULT_SCHEMA = Type.Object({
+  provider: Type.String({ description: "Backend that produced the images." }),
+  model: Type.String({ description: "Model id or alias used." }),
+  paths: Type.Array(Type.String(), { description: "Filesystem paths of the saved images." }),
+  n: Type.Integer({ description: "Number of images saved." }),
+});
+
+/** Machine-readable success result for image_to_video / reference_to_video. */
+const VIDEO_TOOL_RESULT_SCHEMA = Type.Object({
+  provider: Type.String({ description: "Backend that produced the video." }),
+  model: Type.String({ description: "Model id used." }),
+  path: Type.String({ description: "Filesystem path of the saved video." }),
+  requestId: Type.String({ description: "Provider request id." }),
+  duration: Type.Number({ description: "Video duration in seconds." }),
+  resolution: Type.String({ description: "Video resolution label, e.g. 720p." }),
+});
 
 async function requireProviderApiKey(
   ctx: ExtensionContext,
@@ -93,13 +115,15 @@ function resolveEditImages(
 }
 
 export default function piImagenTools(pi: ExtensionAPI): void {
-  pi.registerProvider(XAI_PROVIDER_ID, { oauth: createXaiOAuth() });
+  registerXaiImageModels(pi, createXaiOAuth());
   registerSettingsCommand(pi);
 
   pi.registerTool(
     defineTool({
       name: "image_gen",
       label: "image_gen",
+      annotations: IMAGEN_ANNOTATIONS,
+      outputSchema: IMAGE_TOOL_RESULT_SCHEMA,
       description:
         "Generate image(s) from a text description. provider=xai uses xAI Imagine; provider=codex uses ChatGPT/Codex GPT Image 2/2.5 via official /images/generations (Pi openai-codex auth). Defaults from /imagen-settings. Requires output_path.",
       parameters: Type.Object({
@@ -206,6 +230,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
               },
             ],
             details: { provider, ...result },
+            structuredContent: { provider, model: result.model, paths: result.paths, n: result.n },
           };
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -223,6 +248,8 @@ export default function piImagenTools(pi: ExtensionAPI): void {
     defineTool({
       name: "image_edit",
       label: "image_edit",
+      annotations: IMAGEN_ANNOTATIONS,
+      outputSchema: IMAGE_TOOL_RESULT_SCHEMA,
       description:
         "Edit reference image(s). The prompt must describe the complete desired output and explicitly state which identity, composition, and details to preserve. provider=xai uses xAI Imagine; provider=codex uses official Codex /images/edits (gpt-image-2/2.5, max 5 refs). Use images for paths/URLs/current [Image #N] attachments, or num_last_images_to_include for recent conversation images. Requires output_path.",
       parameters: Type.Object({
@@ -352,6 +379,7 @@ export default function piImagenTools(pi: ExtensionAPI): void {
               },
             ],
             details: { provider, ...result },
+            structuredContent: { provider, model: result.model, paths: result.paths, n: result.n },
           };
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -369,6 +397,8 @@ export default function piImagenTools(pi: ExtensionAPI): void {
     defineTool({
       name: "image_to_video",
       label: "image_to_video",
+      annotations: IMAGEN_ANNOTATIONS,
+      outputSchema: VIDEO_TOOL_RESULT_SCHEMA,
       description:
         "Generate a video from one source image via xAI Imagine (grok-build image_to_video). Requires image + output_path. Optional motion prompt; duration 6 or 10s; resolution 480p/720p. Uses Pi xai OAuth.",
       parameters: Type.Object({
@@ -407,6 +437,14 @@ export default function piImagenTools(pi: ExtensionAPI): void {
           return {
             content: [{ type: "text", text: `${formatSavedVideo(result)}\nprovider: xai` }],
             details: { provider: "xai", ...result },
+            structuredContent: {
+              provider: "xai",
+              model: result.model,
+              path: result.path,
+              requestId: result.requestId,
+              duration: result.duration,
+              resolution: result.resolution,
+            },
           };
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -424,6 +462,8 @@ export default function piImagenTools(pi: ExtensionAPI): void {
     defineTool({
       name: "reference_to_video",
       label: "reference_to_video",
+      annotations: IMAGEN_ANNOTATIONS,
+      outputSchema: VIDEO_TOOL_RESULT_SCHEMA,
       description:
         "Generate a video from reference images and/or preset voices + prompt via xAI Imagine (grok-build reference_to_video). Requires prompt, output_path, and at least one of images/voices. Tag refs in the prompt as <IMAGE_0>, <IMAGE_1>, ... and <AUDIO_0>, <AUDIO_1>, ... Duration 1–15s; resolution 480p/720p. Uses Pi xai OAuth.",
       parameters: Type.Object({
@@ -488,6 +528,14 @@ export default function piImagenTools(pi: ExtensionAPI): void {
           return {
             content: [{ type: "text", text: `${formatSavedVideo(result)}\nprovider: xai` }],
             details: { provider: "xai", ...result },
+            structuredContent: {
+              provider: "xai",
+              model: result.model,
+              path: result.path,
+              requestId: result.requestId,
+              duration: result.duration,
+              resolution: result.resolution,
+            },
           };
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
