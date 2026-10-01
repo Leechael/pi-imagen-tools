@@ -174,12 +174,20 @@ export function createXaiOAuth(fetchImpl: typeof fetch = fetch) {
       }
       throw new Error("xAI device code expired");
     },
-    async refreshToken(credentials: OAuthCredentials): Promise<OAuthCredentials> {
-      const response = await postForm(fetchImpl, XAI_TOKEN_URL, {
-        grant_type: "refresh_token",
-        client_id: XAI_CLIENT_ID,
-        refresh_token: credentials.refresh,
-      });
+    async refreshToken(
+      credentials: OAuthCredentials,
+      signal?: AbortSignal,
+    ): Promise<OAuthCredentials> {
+      const response = await postForm(
+        fetchImpl,
+        XAI_TOKEN_URL,
+        {
+          grant_type: "refresh_token",
+          client_id: XAI_CLIENT_ID,
+          refresh_token: credentials.refresh,
+        },
+        signal,
+      );
       if (!response.ok) throw requestFailure("token refresh", response);
       return credentialsFromTokenResponse(response.body, credentials.refresh);
     },
