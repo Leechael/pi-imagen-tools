@@ -50,6 +50,31 @@ describe("auth helpers", () => {
     assert.equal(credentials.refresh, "new-refresh");
   });
 
+  it("passes the abort signal to the refresh request", async () => {
+    const oauth = createXaiOAuth(
+      (_input, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new Error("aborted by signal")), {
+            once: true,
+          });
+        }),
+    );
+    const controller = new AbortController();
+    // Fail fast if the signal is not forwarded: the mock never resolves on its own.
+    const fallback = new Promise<never>((_resolve, reject) =>
+      setTimeout(() => reject(new Error("refreshToken ignored the abort signal")), 1000),
+    );
+    const pending = Promise.race([
+      oauth.refreshToken(
+        { access: "old-access", refresh: "old-refresh", expires: 0 },
+        controller.signal,
+      ),
+      fallback,
+    ]);
+    controller.abort();
+    await assert.rejects(pending, /aborted by signal/);
+  });
+
   it("registers xAI OAuth and resolves tool auth through the public ModelRegistry API", async () => {
     const tools = new Map<string, { execute: (...args: unknown[]) => Promise<unknown> }>();
     const providers: Array<{ name: string; config: Record<string, unknown> }> = [];
