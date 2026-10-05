@@ -40,8 +40,7 @@
     "pre-commit": "prek run"
   },
   "dependencies": {
-    "sharp": "^0.35.3",
-    "typebox": "^1.1.38"
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "^0.99.2",
@@ -51,12 +50,14 @@
     "@types/node": "^24.0.0",
     "oxfmt": "^0.44.0",
     "oxlint": "^1.59.0",
+    "typebox": "^1.1.38",
     "typescript": "^5.9.0"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*"
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
   },
   "engines": {
     "node": ">=22"
