@@ -26,7 +26,6 @@ Pi is a small harness you adapt to your own workflow. Image and video generation
 - **Codex via existing Pi auth** — uses the built-in `openai-codex` provider credentials.
 - **`/imagen-settings`** — interactive TUI plus `status` / `reset` subcommands.
 - **Sensible output path handling** — relative paths resolve to cwd; multi-`n` expands `{i}` or `-1`, `-2`, … suffixes.
-- **Image model catalog entry** — registers `xai/grok-imagine-image-quality` as a pi image model (pi ≥ 0.99), visible via `getModelsOfType("image", "xai")` with a `generateImages` implementation backed by the same runtime-resolved `/login xai` credential. Interactive `image_gen`/`image_edit` remain the primary surface.
 
 ## Install
 

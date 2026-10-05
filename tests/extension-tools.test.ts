@@ -9,17 +9,24 @@ type CapturedTool = {
   outputSchema?: { properties?: Record<string, unknown>; required?: string[] };
 };
 
-function captureTools(): { tools: CapturedTool[]; pi: ExtensionAPI } {
+function captureTools(): {
+  tools: CapturedTool[];
+  providers: Array<{ name: string; config: Record<string, unknown> }>;
+  pi: ExtensionAPI;
+} {
   const tools: CapturedTool[] = [];
+  const providers: Array<{ name: string; config: Record<string, unknown> }> = [];
   const pi = {
-    registerProvider() {},
+    registerProvider(name: string, config: Record<string, unknown>) {
+      providers.push({ name, config });
+    },
     registerCommand() {},
     registerTool(tool: CapturedTool) {
       tools.push(tool);
     },
   } as unknown as ExtensionAPI;
   piImagenTools(pi);
-  return { tools, pi };
+  return { tools, providers, pi };
 }
 
 describe("extension tool registration", () => {
@@ -36,6 +43,19 @@ describe("extension tool registration", () => {
     for (const tool of tools) {
       assert.deepEqual(tool.annotations, { readOnlyHint: false, openWorldHint: true });
     }
+  });
+
+  it("registers the xai provider without replacing its model catalog", () => {
+    const { providers } = captureTools();
+    const xai = providers.find((provider) => provider.name === "xai");
+    assert.ok(xai, "xai provider registration missing");
+    assert.equal(typeof xai.config.oauth, "object");
+    // pi's registerProvider replaces ALL models of a provider when `models` is given.
+    // The built-in xai provider carries the grok chat models, so supplying `models`
+    // here would wipe them from the model picker. Never do that without re-declaring
+    // the built-in chat models.
+    assert.equal(xai.config.models, undefined);
+    assert.equal(xai.config.images, undefined);
   });
 
   it("declares output schemas for machine-readable success results", () => {

@@ -60,10 +60,17 @@ describe("auth helpers", () => {
         }),
     );
     const controller = new AbortController();
-    const pending = oauth.refreshToken(
-      { access: "old-access", refresh: "old-refresh", expires: 0 },
-      controller.signal,
+    // Fail fast if the signal is not forwarded: the mock never resolves on its own.
+    const fallback = new Promise<never>((_resolve, reject) =>
+      setTimeout(() => reject(new Error("refreshToken ignored the abort signal")), 1000),
     );
+    const pending = Promise.race([
+      oauth.refreshToken(
+        { access: "old-access", refresh: "old-refresh", expires: 0 },
+        controller.signal,
+      ),
+      fallback,
+    ]);
     controller.abort();
     await assert.rejects(pending, /aborted by signal/);
   });
